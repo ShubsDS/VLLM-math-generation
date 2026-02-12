@@ -1,0 +1,57 @@
+# VLLM Inference Configuration
+# This file documents common configuration options
+
+model:
+  name: "Qwen/Qwen2.5-Math-14B-Instruct"
+  # Alternative models:
+  # name: "Qwen/Qwen2.5-Math-7B-Instruct"   # Smaller, faster
+  # name: "Qwen/Qwen2.5-Math-72B-Instruct"  # Larger, more capable
+
+  max_model_len: 4096
+  dtype: "bfloat16"  # or "float16"
+  trust_remote_code: true
+  gpu_memory_utilization: 0.95
+
+distributed:
+  tensor_parallel_size: 4  # Number of GPUs for model parallelism
+  # For very large models, you might need:
+  # tensor_parallel_size: 8
+
+sampling:
+  # Greedy decoding (deterministic)
+  temperature: 0.0
+  top_p: 1.0
+  max_tokens: 2048
+
+  # For diverse solutions (uncomment and adjust):
+  # temperature: 0.7
+  # top_p: 0.95
+  # top_k: 50
+  # n: 1  # Number of solutions per prompt
+
+inference:
+  batch_size: 32
+  # Adjust based on GPU memory:
+  # - 16 for V100 or if OOM errors
+  # - 64+ for A100 with lots of memory
+
+dataset:
+  name: "hendrycks/competition_math"
+  split: "test"
+  subset: "all"  # or specific subject like "algebra", "geometry"
+  max_samples: null  # null for all, or integer for subset
+
+paths:
+  data_dir: "data"
+  output_dir: "outputs"
+  log_dir: "logs"
+  hf_cache: "/path/to/huggingface/cache"  # UPDATE THIS
+
+slurm:
+  partition: "gpu"
+  time: "24:00:00"
+  nodes: 1
+  cpus_per_task: 16
+  mem: "128G"
+  # GPU configuration must match tensor_parallel_size
+  gres: "gpu:4"

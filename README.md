@@ -148,6 +148,23 @@ squeue -u $USER
 tail -f logs/vllm_inference_<JOB_ID>.out
 ```
 
+### Local End-to-End Run (No Slurm)
+
+If you have direct GPU access and want a single command that prepares data and runs inference:
+
+```bash
+source .venv/bin/activate
+python scripts/run_local_pipeline.py \
+    --split test \
+    --subset all \
+    --model-name Qwen/Qwen2.5-Math-7B-Instruct \
+    --tensor-parallel-size 1
+```
+
+The script writes:
+- prompts/metadata to `data/`
+- generated solutions to `outputs/`
+
 ### Step 3: Check Results
 
 After the job completes:

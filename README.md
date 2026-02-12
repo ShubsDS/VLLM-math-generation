@@ -1,6 +1,6 @@
 # VLLM MATH Dataset Inference
 
-Distributed inference on the MATH dataset using VLLM with Qwen3-14B across 4 GPUs.
+Distributed inference on the MATH dataset using VLLM with Qwen2.5-Math across 4 GPUs.
 
 This project uses [uv](https://github.com/astral-sh/uv) for fast Python environment management, following VLLM's recommended setup.
 
@@ -112,13 +112,13 @@ This creates:
 
 ### Step 1: Sanity Check (Recommended)
 
-Before running full inference, verify that Qwen3 is working correctly:
+Before running full inference, verify that the model is working correctly:
 
 ```bash
 # Interactive sanity check (if you have GPU access on login node)
 source .venv/bin/activate
 python scripts/sanity_check.py \
-    --model-name Qwen/Qwen2.5-Math-14B-Instruct \
+    --model-name Qwen/Qwen2.5-Math-7B-Instruct \
     --tensor-parallel-size 1
 
 # Or submit as a Slurm job
@@ -164,7 +164,7 @@ wc -l outputs/math_solutions_<JOB_ID>.jsonl
 
 ### Model Selection
 
-The default model is `Qwen/Qwen2.5-Math-14B-Instruct`. To use a different model:
+The default model is `Qwen/Qwen2.5-Math-7B-Instruct`. To use a different model:
 
 ```bash
 # In slurm script, change:
@@ -266,6 +266,30 @@ uv pip uninstall vllm torch
 uv pip install vllm --torch-backend=cu118  # Replace with your CUDA version
 ```
 
+### Tokenizer AttributeError (`all_special_tokens_extended`)
+
+If you see:
+`AttributeError: Qwen2Tokenizer has no attribute all_special_tokens_extended`
+
+your environment likely has `transformers>=5`, which is currently incompatible with this vLLM setup.
+
+Fix:
+```bash
+source .venv/bin/activate
+uv pip install 'transformers>=4.55.2,<5' 'tokenizers>=0.21.1,<0.23'
+```
+
+### Numba / NumPy Compatibility Error
+
+If you see:
+`ImportError: Numba needs NumPy 2.2 or less. Got NumPy 2.4`
+
+fix by downgrading NumPy:
+```bash
+source .venv/bin/activate
+uv pip install 'numpy>=1.24.0,<2.3'
+```
+
 ### Out of Memory Errors
 
 1. Reduce batch size: `BATCH_SIZE=16`
@@ -292,8 +316,8 @@ If HuggingFace downloads are slow or fail:
    ```bash
    source .venv/bin/activate
    python -c "from transformers import AutoTokenizer, AutoModelForCausalLM; \
-              AutoTokenizer.from_pretrained('Qwen/Qwen2.5-Math-14B-Instruct'); \
-              AutoModelForCausalLM.from_pretrained('Qwen/Qwen2.5-Math-14B-Instruct')"
+              AutoTokenizer.from_pretrained('Qwen/Qwen2.5-Math-7B-Instruct'); \
+              AutoModelForCausalLM.from_pretrained('Qwen/Qwen2.5-Math-7B-Instruct')"
    ```
 2. Use local model path in scripts:
    ```bash
@@ -389,7 +413,7 @@ After generating solutions:
 - [VLLM Documentation](https://docs.vllm.ai/en/latest/getting_started/quickstart/)
 - [uv Documentation](https://github.com/astral-sh/uv)
 - [MATH Dataset](https://github.com/hendrycks/math)
-- [Qwen2.5-Math Models](https://huggingface.co/Qwen/Qwen2.5-Math-14B-Instruct)
+- [Qwen2.5-Math Models](https://huggingface.co/Qwen/Qwen2.5-Math-7B-Instruct)
 
 ## Citation
 

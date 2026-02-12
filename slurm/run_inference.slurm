@@ -47,7 +47,7 @@ export UV_TORCH_BACKEND=auto
 mkdir -p logs outputs data
 
 # Configuration
-MODEL_NAME="Qwen/Qwen2.5-Math-14B-Instruct"
+MODEL_NAME="Qwen/Qwen2.5-Math-7B-Instruct"
 PROMPTS_FILE="data/math_test_prompts.jsonl"
 OUTPUT_FILE="outputs/math_solutions_${SLURM_JOB_ID}.jsonl"
 TENSOR_PARALLEL_SIZE=4

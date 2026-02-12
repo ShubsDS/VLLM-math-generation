@@ -2,9 +2,8 @@
 Load and prepare the MATH dataset for VLLM inference.
 """
 import json
-import os
 from pathlib import Path
-from datasets import load_dataset
+from datasets import concatenate_datasets, get_dataset_config_names, load_dataset
 from tqdm import tqdm
 import argparse
 
@@ -35,13 +34,8 @@ def prepare_math_dataset(
     """
     print(f"Loading MATH dataset (split={split}, subset={subset})...")
 
-    # Load the MATH dataset from HuggingFace
-    if subset == "all":
-        dataset = load_dataset("hendrycks/competition_math", split=split)
-    else:
-        dataset = load_dataset("hendrycks/competition_math", split=split)
-        # Filter by subject type
-        dataset = dataset.filter(lambda x: x['type'] == subset)
+    dataset, dataset_source = load_math_dataset(split=split, subset=subset)
+    print(f"Loaded from dataset source: {dataset_source}")
 
     if max_samples:
         dataset = dataset.select(range(min(max_samples, len(dataset))))
@@ -84,6 +78,82 @@ def prepare_math_dataset(
     print(f"Saved metadata to {metadata_file}")
 
     return prompts_file, metadata_file
+
+
+def normalize_subset_name(value: str) -> str:
+    """Normalize subset/type names for matching across dataset variants."""
+    return value.strip().lower().replace("&", "and").replace(" ", "_")
+
+
+def filter_by_type(dataset, subset: str):
+    """Filter by `type` column with flexible matching (e.g. 'counting_and_probability')."""
+    if "type" not in dataset.column_names:
+        raise ValueError("Dataset does not contain a 'type' column for subset filtering.")
+
+    normalized_subset = normalize_subset_name(subset)
+    filtered = dataset.filter(
+        lambda x: normalize_subset_name(x["type"]) == normalized_subset
+    )
+    if len(filtered) == 0:
+        available_types = sorted({normalize_subset_name(t) for t in dataset["type"]})
+        raise ValueError(
+            f"No rows matched subset '{subset}'. Available subsets include: {available_types}"
+        )
+    return filtered
+
+
+def load_math_dataset(split: str, subset: str):
+    """
+    Load MATH dataset from known HF IDs.
+
+    Handles both:
+    - Single dataset layout with full split (e.g. Maxwell-Jia/MATH)
+    - Multi-config layout by subject type (e.g. EleutherAI/hendrycks_math)
+    """
+    # Try legacy first for backwards compatibility, then known active mirrors.
+    candidate_datasets = [
+        "hendrycks/competition_math",
+        "EleutherAI/hendrycks_math",
+        "Maxwell-Jia/MATH",
+        "jeggers/competition_math",
+    ]
+
+    errors = {}
+    normalized_subset = normalize_subset_name(subset)
+
+    for dataset_id in candidate_datasets:
+        try:
+            if normalized_subset == "all":
+                try:
+                    return load_dataset(dataset_id, split=split), dataset_id
+                except Exception:
+                    # Some dataset repos use per-subject configs; combine them for "all".
+                    config_names = get_dataset_config_names(dataset_id)
+                    if not config_names:
+                        raise
+                    combined = concatenate_datasets(
+                        [load_dataset(dataset_id, name=name, split=split) for name in config_names]
+                    )
+                    return combined, dataset_id
+
+            # Try subset as config name first (works for per-subject repos)
+            try:
+                return load_dataset(dataset_id, name=normalized_subset, split=split), dataset_id
+            except Exception:
+                pass
+
+            # Fallback: load full split and filter by `type` column
+            full_split = load_dataset(dataset_id, split=split)
+            return filter_by_type(full_split, subset), dataset_id
+
+        except Exception as exc:
+            errors[dataset_id] = str(exc)
+
+    error_lines = "\n".join([f"- {ds}: {err}" for ds, err in errors.items()])
+    raise RuntimeError(
+        "Failed to load MATH dataset from all known sources.\n"
+        f"Tried:\n{error_lines}"
+    )
 
 
 if __name__ == "__main__":

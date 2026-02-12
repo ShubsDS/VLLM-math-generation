@@ -2,13 +2,66 @@
 Run distributed VLLM inference on MATH dataset using multiple GPUs.
 """
 import json
-import os
 import argparse
 from pathlib import Path
 from typing import List, Dict
 from tqdm import tqdm
 import torch
-from vllm import LLM, SamplingParams
+import transformers
+import numpy as np
+
+
+DEPRECATED_MODEL_ALIASES = {
+    "Qwen/Qwen2.5-Math-14B-Instruct": "Qwen/Qwen2.5-Math-7B-Instruct",
+}
+
+
+def resolve_model_name(model_name: str) -> str:
+    """Map deprecated/invalid model IDs to valid HuggingFace IDs."""
+    if model_name in DEPRECATED_MODEL_ALIASES:
+        replacement = DEPRECATED_MODEL_ALIASES[model_name]
+        print(
+            f"Model '{model_name}' is not available on Hugging Face. "
+            f"Using '{replacement}' instead."
+        )
+        return replacement
+    return model_name
+
+
+def validate_transformers_compatibility() -> None:
+    """Fail fast with a clear message when transformers major version is unsupported."""
+    version = transformers.__version__
+    major_str = version.split(".", 1)[0]
+    try:
+        major = int(major_str)
+    except ValueError:
+        # Keep running for non-standard version strings (e.g. nightly tags).
+        return
+
+    if major >= 5:
+        raise RuntimeError(
+            f"Incompatible transformers version detected: {version}. "
+            "This project currently requires transformers<5 for vLLM tokenizer compatibility. "
+            "Run: uv pip install 'transformers>=4.55.2,<5' 'tokenizers>=0.21.1,<0.23'"
+        )
+
+
+def validate_numpy_compatibility() -> None:
+    """Fail fast when NumPy is incompatible with numba used by vLLM."""
+    version = np.__version__
+    parts = version.split(".")
+    try:
+        major = int(parts[0])
+        minor = int(parts[1]) if len(parts) > 1 else 0
+    except ValueError:
+        return
+
+    if major > 2 or (major == 2 and minor > 2):
+        raise RuntimeError(
+            f"Incompatible numpy version detected: {version}. "
+            "vLLM's numba dependency requires numpy<=2.2. "
+            "Run: uv pip install 'numpy>=1.24.0,<2.3'"
+        )
 
 
 def load_prompts(prompts_file: str) -> List[str]:
@@ -54,14 +107,19 @@ def run_inference(
         top_p: Nucleus sampling parameter
         batch_size: Number of prompts to process at once
     """
+    model_name = resolve_model_name(model_name)
+    validate_transformers_compatibility()
+    validate_numpy_compatibility()
+
     print(f"Initializing VLLM with {tensor_parallel_size} GPUs...")
     print(f"Model: {model_name}")
 
     # Initialize VLLM with tensor parallelism
+    from vllm import LLM, SamplingParams
+
     llm = LLM(
         model=model_name,
         tensor_parallel_size=tensor_parallel_size,
-        trust_remote_code=True,
         max_model_len=4096,  # Adjust based on model capacity
         gpu_memory_utilization=0.95,
         dtype="bfloat16",  # or "float16" depending on GPU support
@@ -114,7 +172,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model-name",
         type=str,
-        default="Qwen/Qwen2.5-Math-14B-Instruct",
+        default="Qwen/Qwen2.5-Math-7B-Instruct",
         help="HuggingFace model name or local path"
     )
     parser.add_argument(
@@ -161,6 +219,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    validate_transformers_compatibility()
+    validate_numpy_compatibility()
 
     # Check GPU availability
     if not torch.cuda.is_available():

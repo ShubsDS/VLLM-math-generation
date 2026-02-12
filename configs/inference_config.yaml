@@ -2,9 +2,9 @@
 # This file documents common configuration options
 
 model:
-  name: "Qwen/Qwen2.5-Math-14B-Instruct"
+  name: "Qwen/Qwen2.5-Math-7B-Instruct"
   # Alternative models:
-  # name: "Qwen/Qwen2.5-Math-7B-Instruct"   # Smaller, faster
+  # name: "Qwen/Qwen2.5-Math-1.5B-Instruct" # Smaller, faster
   # name: "Qwen/Qwen2.5-Math-72B-Instruct"  # Larger, more capable
 
   max_model_len: 4096

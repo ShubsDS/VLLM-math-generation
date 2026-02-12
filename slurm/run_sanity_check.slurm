@@ -44,7 +44,7 @@ export UV_TORCH_BACKEND=auto
 mkdir -p outputs logs
 
 # Configuration
-MODEL_NAME="Qwen/Qwen2.5-Math-14B-Instruct"
+MODEL_NAME="Qwen/Qwen2.5-Math-7B-Instruct"
 
 echo ""
 echo "Running sanity check with model: $MODEL_NAME"

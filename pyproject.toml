@@ -1,13 +1,15 @@
 [project]
 name = "vllm-math-inference"
 version = "0.1.0"
-description = "VLLM distributed inference on MATH dataset with Qwen3"
+description = "VLLM distributed inference on MATH dataset with Qwen2.5-Math"
 requires-python = ">=3.12"
 dependencies = [
     "vllm>=0.6.0",
+    "transformers>=4.55.2,<5",
+    "tokenizers>=0.21.1,<0.23",
     "datasets>=2.16.0",
     "pandas>=2.0.0",
-    "numpy>=1.24.0",
+    "numpy>=1.24.0,<2.3",
     "tqdm>=4.66.0",
     "jsonlines>=4.0.0",
     "python-dotenv>=1.0.0",

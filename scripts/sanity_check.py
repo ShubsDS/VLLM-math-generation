@@ -1,11 +1,66 @@
 """
-Sanity check script to verify Qwen3 is working correctly on sample MATH problems.
+Sanity check script to verify a model is working correctly on sample MATH problems.
 """
 import json
 import re
 import argparse
 from pathlib import Path
-from vllm import LLM, SamplingParams
+import transformers
+import numpy as np
+import torch
+
+
+DEPRECATED_MODEL_ALIASES = {
+    "Qwen/Qwen2.5-Math-14B-Instruct": "Qwen/Qwen2.5-Math-7B-Instruct",
+}
+
+
+def resolve_model_name(model_name: str) -> str:
+    """Map deprecated/invalid model IDs to valid HuggingFace IDs."""
+    if model_name in DEPRECATED_MODEL_ALIASES:
+        replacement = DEPRECATED_MODEL_ALIASES[model_name]
+        print(
+            f"Model '{model_name}' is not available on Hugging Face. "
+            f"Using '{replacement}' instead."
+        )
+        return replacement
+    return model_name
+
+
+def validate_transformers_compatibility() -> None:
+    """Fail fast with a clear message when transformers major version is unsupported."""
+    version = transformers.__version__
+    major_str = version.split(".", 1)[0]
+    try:
+        major = int(major_str)
+    except ValueError:
+        # Keep running for non-standard version strings (e.g. nightly tags).
+        return
+
+    if major >= 5:
+        raise RuntimeError(
+            f"Incompatible transformers version detected: {version}. "
+            "This project currently requires transformers<5 for vLLM tokenizer compatibility. "
+            "Run: uv pip install 'transformers>=4.55.2,<5' 'tokenizers>=0.21.1,<0.23'"
+        )
+
+
+def validate_numpy_compatibility() -> None:
+    """Fail fast when NumPy is incompatible with numba used by vLLM."""
+    version = np.__version__
+    parts = version.split(".")
+    try:
+        major = int(parts[0])
+        minor = int(parts[1]) if len(parts) > 1 else 0
+    except ValueError:
+        return
+
+    if major > 2 or (major == 2 and minor > 2):
+        raise RuntimeError(
+            f"Incompatible numpy version detected: {version}. "
+            "vLLM's numba dependency requires numpy<=2.2. "
+            "Run: uv pip install 'numpy>=1.24.0,<2.3'"
+        )
 
 
 # Sample MATH problems with known answers for testing
@@ -76,7 +131,7 @@ def normalize_answer(answer: str) -> str:
 
 
 def run_sanity_check(
-    model_name: str = "Qwen/Qwen2.5-Math-14B-Instruct",
+    model_name: str = "Qwen/Qwen2.5-Math-7B-Instruct",
     tensor_parallel_size: int = 1,
     max_tokens: int = 1024,
     temperature: float = 0.0,
@@ -90,6 +145,16 @@ def run_sanity_check(
         max_tokens: Maximum tokens to generate
         temperature: Sampling temperature
     """
+    model_name = resolve_model_name(model_name)
+    validate_transformers_compatibility()
+    validate_numpy_compatibility()
+
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA is not available on this machine. "
+            "Run sanity check on a GPU node, or install a CPU-specific inference stack."
+        )
+
     print(f"=" * 80)
     print(f"SANITY CHECK: Testing {model_name}")
     print(f"Using {tensor_parallel_size} GPU(s)")
@@ -97,10 +162,11 @@ def run_sanity_check(
 
     # Initialize VLLM
     print("\nInitializing model...")
+    from vllm import LLM, SamplingParams
+
     llm = LLM(
         model=model_name,
         tensor_parallel_size=tensor_parallel_size,
-        trust_remote_code=True,
         max_model_len=4096,
         gpu_memory_utilization=0.90,
         dtype="bfloat16",
@@ -184,7 +250,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model-name",
         type=str,
-        default="Qwen/Qwen2.5-Math-14B-Instruct",
+        default="Qwen/Qwen2.5-Math-7B-Instruct",
         help="HuggingFace model name"
     )
     parser.add_argument(

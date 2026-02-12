@@ -1,0 +1,31 @@
+[project]
+name = "vllm-math-inference"
+version = "0.1.0"
+description = "VLLM distributed inference on MATH dataset with Qwen3"
+requires-python = ">=3.12"
+dependencies = [
+    "vllm>=0.6.0",
+    "datasets>=2.16.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "tqdm>=4.66.0",
+    "jsonlines>=4.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+logging = [
+    "wandb>=0.16.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+# Configure uv-specific settings
+dev-dependencies = []
+
+[tool.uv.sources]
+# Use auto torch backend detection
+vllm = { index = "pypi" }

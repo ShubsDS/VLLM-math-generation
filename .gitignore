@@ -20,11 +20,14 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual environments (uv)
+.venv/
 venv/
 env/
 ENV/
-.venv
+
+# uv
+uv.lock
 
 # IDE
 .vscode/
@@ -49,6 +52,9 @@ logs/*.err
 !data/.gitkeep
 !outputs/.gitkeep
 !logs/.gitkeep
+!configs/.gitkeep
+!scripts/.gitkeep
+!slurm/.gitkeep
 
 # Model cache
 models/

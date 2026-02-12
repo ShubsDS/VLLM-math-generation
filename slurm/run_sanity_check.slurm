@@ -23,9 +23,12 @@ echo "=========================================="
 module purge
 module load cuda/11.8
 
-# Activate conda environment
-source ~/.bashrc
-conda activate vllm-math
+# Activate uv virtual environment
+source .venv/bin/activate
+
+# Verify environment
+which python
+python --version
 
 # Set CUDA device
 export CUDA_VISIBLE_DEVICES=0
@@ -33,6 +36,9 @@ export CUDA_VISIBLE_DEVICES=0
 # Set HuggingFace cache
 export HF_HOME=/path/to/huggingface/cache  # UPDATE THIS PATH
 export TRANSFORMERS_CACHE=$HF_HOME/transformers
+
+# Set UV torch backend
+export UV_TORCH_BACKEND=auto
 
 # Create output directory
 mkdir -p outputs logs

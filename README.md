@@ -2,13 +2,16 @@
 
 Distributed inference on the MATH dataset using VLLM with Qwen3-14B across 4 GPUs.
 
+This project uses [uv](https://github.com/astral-sh/uv) for fast Python environment management, following VLLM's recommended setup.
+
 ## Project Structure
 
 ```
 .
 ├── README.md                       # This file
-├── requirements.txt                # Python dependencies
-├── environment.yml                 # Conda environment specification
+├── pyproject.toml                 # Project dependencies (uv)
+├── .python-version                # Python version (3.12)
+├── .venv/                         # Virtual environment (created by uv)
 ├── data/                          # Dataset storage
 │   ├── math_test_prompts.jsonl   # Generated prompts (after setup)
 │   └── math_test_metadata.jsonl  # Problem metadata & ground truth
@@ -19,28 +22,55 @@ Distributed inference on the MATH dataset using VLLM with Qwen3-14B across 4 GPU
 ├── slurm/
 │   ├── run_inference.slurm       # Full inference job
 │   └── run_sanity_check.slurm    # Quick validation job
+├── configs/
+│   └── inference_config.yaml     # Configuration reference
 ├── outputs/                       # Generated solutions
 └── logs/                          # Slurm job logs
 ```
 
 ## Setup Instructions
 
-### 1. Environment Setup
-
-Create and activate the conda environment:
+### 1. Install uv (if not already installed)
 
 ```bash
-# Create environment
-conda env create -f environment.yml
+# On macOS and Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or using pip
+pip install uv
+
+# Verify installation
+uv --version
+```
+
+### 2. Create Environment and Install Dependencies
+
+Following VLLM's uv quickstart, create a Python 3.12 environment:
+
+```bash
+# Create virtual environment with Python 3.12
+uv venv --python 3.12 --seed
 
 # Activate environment
-conda activate vllm-math
+source .venv/bin/activate
+
+# Install vllm with automatic torch backend detection
+# This automatically selects the right PyTorch index based on your CUDA version
+uv pip install vllm --torch-backend=auto
+
+# Install other project dependencies
+uv pip install -e .
 
 # Verify installation
 python -c "import vllm; import torch; print(f'VLLM: {vllm.__version__}, CUDA: {torch.cuda.is_available()}')"
 ```
 
-### 2. Configure HuggingFace Cache (Optional but Recommended)
+**Note on torch backends:**
+- `--torch-backend=auto` automatically detects your CUDA version
+- For specific CUDA versions, use `--torch-backend=cu118`, `--torch-backend=cu121`, or `--torch-backend=cu126`
+- Set `UV_TORCH_BACKEND` environment variable for persistent configuration
+
+### 3. Configure HuggingFace Cache (Optional but Recommended)
 
 To avoid re-downloading models, set up a shared cache directory:
 
@@ -52,11 +82,14 @@ export HF_HOME=/path/to/your/huggingface/cache
 mkdir -p /path/to/your/huggingface/cache
 ```
 
-### 3. Prepare MATH Dataset
+### 4. Prepare MATH Dataset
 
 Download and prepare the MATH dataset:
 
 ```bash
+# Activate environment first
+source .venv/bin/activate
+
 # Download full test set
 python scripts/load_math_dataset.py \
     --output-dir data \
@@ -83,6 +116,7 @@ Before running full inference, verify that Qwen3 is working correctly:
 
 ```bash
 # Interactive sanity check (if you have GPU access on login node)
+source .venv/bin/activate
 python scripts/sanity_check.py \
     --model-name Qwen/Qwen2.5-Math-14B-Instruct \
     --tensor-parallel-size 1
@@ -148,6 +182,17 @@ The setup uses 4 GPUs by default. To adjust:
 TENSOR_PARALLEL_SIZE=4       # Must match --gres value
 ```
 
+### Torch Backend Selection
+
+The slurm scripts use `UV_TORCH_BACKEND=auto` for automatic CUDA detection. You can override this:
+
+```bash
+# For specific CUDA versions:
+export UV_TORCH_BACKEND=cu118  # CUDA 11.8
+export UV_TORCH_BACKEND=cu121  # CUDA 12.1
+export UV_TORCH_BACKEND=cu126  # CUDA 12.6
+```
+
 ### Sampling Parameters
 
 For greedy decoding (deterministic, single solution per problem):
@@ -198,6 +243,29 @@ Metadata file contains ground truth:
 
 ## Troubleshooting
 
+### uv Installation Issues
+
+If `uv` commands fail:
+```bash
+# Ensure uv is in your PATH
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Or reinstall
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### CUDA/PyTorch Version Mismatch
+
+If you get CUDA errors:
+```bash
+# Check your CUDA version
+nvidia-smi
+
+# Reinstall vllm with specific torch backend
+uv pip uninstall vllm torch
+uv pip install vllm --torch-backend=cu118  # Replace with your CUDA version
+```
+
 ### Out of Memory Errors
 
 1. Reduce batch size: `BATCH_SIZE=16`
@@ -222,6 +290,7 @@ If you get OOM errors even with tensor parallelism:
 If HuggingFace downloads are slow or fail:
 1. Pre-download the model:
    ```bash
+   source .venv/bin/activate
    python -c "from transformers import AutoTokenizer, AutoModelForCausalLM; \
               AutoTokenizer.from_pretrained('Qwen/Qwen2.5-Math-14B-Instruct'); \
               AutoModelForCausalLM.from_pretrained('Qwen/Qwen2.5-Math-14B-Instruct')"
@@ -241,7 +310,8 @@ cat logs/vllm_inference_<JOB_ID>.err
 Common issues:
 - Wrong partition name: Update `#SBATCH --partition=gpu`
 - Module not found: Adjust `module load` commands in slurm script
-- Conda environment not found: Check environment name and activation
+- Virtual environment not found: Ensure `.venv` exists in project root
+- Python version mismatch: Recreate environment with `uv venv --python 3.12`
 
 ## Performance Notes
 
@@ -263,6 +333,47 @@ With 4x V100 32GB GPUs:
 2. **Increase batch size** to maximize GPU utilization
 3. **Pre-download models** to avoid download time in job
 4. **Use fast storage** for data/output directories (not NFS if possible)
+5. **Use uv's caching** - uv automatically caches packages for faster reinstalls
+
+## Environment Management with uv
+
+### Useful uv Commands
+
+```bash
+# Add a new dependency
+uv pip install <package>
+
+# Update all dependencies
+uv pip install --upgrade -e .
+
+# List installed packages
+uv pip list
+
+# Freeze current environment
+uv pip freeze > requirements.txt
+
+# Create lock file (for reproducibility)
+uv pip compile pyproject.toml -o requirements.lock
+
+# Sync environment with lock file
+uv pip sync requirements.lock
+```
+
+### Recreating the Environment
+
+If you need to recreate from scratch:
+```bash
+# Remove existing environment
+rm -rf .venv
+
+# Create new environment
+uv venv --python 3.12 --seed
+source .venv/bin/activate
+
+# Reinstall everything
+uv pip install vllm --torch-backend=auto
+uv pip install -e .
+```
 
 ## Next Steps
 
@@ -272,6 +383,13 @@ After generating solutions:
 2. **Error analysis**: Identify problem types where model struggles
 3. **Solution quality**: Analyze reasoning quality and correctness
 4. **Generate multiple trajectories**: Run with temperature > 0 multiple times
+
+## References
+
+- [VLLM Documentation](https://docs.vllm.ai/en/latest/getting_started/quickstart/)
+- [uv Documentation](https://github.com/astral-sh/uv)
+- [MATH Dataset](https://github.com/hendrycks/math)
+- [Qwen2.5-Math Models](https://huggingface.co/Qwen/Qwen2.5-Math-14B-Instruct)
 
 ## Citation
 
@@ -293,3 +411,4 @@ This project setup is provided as-is for research purposes. Please check the lic
 - VLLM: Apache 2.0
 - MATH dataset: MIT License
 - Qwen models: Check HuggingFace model card
+- uv: MIT/Apache 2.0

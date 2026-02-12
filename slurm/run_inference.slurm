@@ -26,9 +26,12 @@ module purge
 module load cuda/11.8  # Adjust CUDA version as needed
 # module load cudnn/8.9  # Uncomment if needed
 
-# Activate conda environment
-source ~/.bashrc  # or source ~/.bash_profile
-conda activate vllm-math
+# Activate uv virtual environment
+source .venv/bin/activate
+
+# Verify uv environment is active
+which python
+python --version
 
 # Set CUDA devices (for 4 GPUs)
 export CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -36,6 +39,9 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 # Set HuggingFace cache directory (optional, to avoid re-downloading)
 export HF_HOME=/path/to/huggingface/cache  # UPDATE THIS PATH
 export TRANSFORMERS_CACHE=$HF_HOME/transformers
+
+# Set UV torch backend for automatic CUDA version detection
+export UV_TORCH_BACKEND=auto
 
 # Create necessary directories
 mkdir -p logs outputs data

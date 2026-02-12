@@ -47,6 +47,11 @@ paths:
   log_dir: "logs"
   hf_cache: "/path/to/huggingface/cache"  # UPDATE THIS
 
+uv:
+  # UV torch backend options
+  torch_backend: "auto"  # or "cu118", "cu121", "cu126" for specific CUDA versions
+  python_version: "3.12"
+
 slurm:
   partition: "gpu"
   time: "24:00:00"

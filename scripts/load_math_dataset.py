@@ -4,7 +4,6 @@ Load and prepare the MATH dataset for VLLM inference.
 import json
 import os
 from pathlib import Path
-from typing import Optional
 from datasets import load_dataset
 from tqdm import tqdm
 import argparse
@@ -23,7 +22,7 @@ def prepare_math_dataset(
     output_dir: str = "data",
     split: str = "test",
     subset: str = "all",
-    max_samples: Optional[int] = None
+    max_samples: int = None
 ):
     """
     Load MATH dataset and prepare it for inference.

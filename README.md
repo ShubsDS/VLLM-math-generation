@@ -18,13 +18,24 @@ This project uses [uv](https://github.com/astral-sh/uv) for fast Python environm
 ├── scripts/
 │   ├── load_math_dataset.py      # Dataset preparation script
 │   ├── run_vllm_inference.py     # Main inference script
+│   ├── run_local_pipeline.py     # End-to-end local pipeline
 │   └── sanity_check.py           # Validation script
+├── evaluation/                    # Evaluation pipeline
+│   ├── README.md                 # Evaluation documentation
+│   ├── run_evaluation.py         # Main evaluation script
+│   ├── evaluator.py              # Core evaluation logic
+│   ├── answer_matcher.py         # Answer extraction & matching
+│   ├── metrics.py                # Metrics computation
+│   └── generate_report.py        # Report generation
 ├── slurm/
 │   ├── run_inference.slurm       # Full inference job
 │   └── run_sanity_check.slurm    # Quick validation job
 ├── configs/
 │   └── inference_config.yaml     # Configuration reference
 ├── outputs/                       # Generated solutions
+├── eval_results/                  # Evaluation reports
+│   ├── reports/                  # JSON, CSV, Markdown reports
+│   └── detailed/                 # Per-problem results
 └── logs/                          # Slurm job logs
 ```
 
@@ -416,14 +427,50 @@ uv pip install vllm --torch-backend=auto
 uv pip install -e .
 ```
 
+## Evaluation
+
+### Evaluate Model Performance
+
+After generating solutions, use the evaluation pipeline to assess accuracy:
+
+```bash
+python evaluation/run_evaluation.py \
+    --solutions-file outputs/math_test_solutions_*.jsonl \
+    --metadata-file data/math_test_metadata.jsonl \
+    --model-name "Qwen/Qwen2.5-Math-7B-Instruct"
+```
+
+This will:
+- Compute overall accuracy on the MATH dataset
+- Break down accuracy by difficulty level (Level 1-5)
+- Break down accuracy by problem type (Algebra, Geometry, etc.)
+- Generate reports in JSON, CSV, and Markdown formats
+- Save detailed per-problem results for error analysis
+
+**Example output:**
+```
+================================================================================
+EVALUATION SUMMARY
+================================================================================
+Model: Qwen/Qwen2.5-Math-7B-Instruct
+Total Problems: 5000
+Correct: 3913
+Accuracy: 78.26%
+================================================================================
+```
+
+Results are saved to `eval_results/` with comprehensive metrics and insights.
+
+For detailed usage and options, see [evaluation/README.md](evaluation/README.md).
+
 ## Next Steps
 
-After generating solutions:
+After evaluating your model:
 
-1. **Evaluate accuracy**: Compare generated solutions with ground truth
-2. **Error analysis**: Identify problem types where model struggles
-3. **Solution quality**: Analyze reasoning quality and correctness
-4. **Generate multiple trajectories**: Run with temperature > 0 multiple times
+1. **Error analysis**: Review detailed results to identify problem types where model struggles
+2. **Solution quality**: Analyze reasoning quality and correctness patterns
+3. **Compare models**: Evaluate multiple models and compare performance
+4. **Generate multiple trajectories**: Run with temperature > 0 multiple times for pass@k metrics
 
 ## References
 

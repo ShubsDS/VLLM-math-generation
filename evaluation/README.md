@@ -43,6 +43,38 @@ python evaluation/run_evaluation.py \
     --output-dir eval_results/qwen25_7b
 ```
 
+### Save Correct Solutions for SFT Training
+
+**NEW!** Extract only correct solutions for supervised fine-tuning:
+
+```bash
+python evaluation/run_evaluation.py \
+    --solutions-file outputs/math_test_solutions_20260212_024306.jsonl \
+    --metadata-file data/math_test_metadata.jsonl \
+    --save-correct data/sft/correct_solutions.parquet
+```
+
+This will:
+1. Evaluate all solutions and identify correct ones
+2. Filter only the correct solutions (where predicted answer matches ground truth)
+3. Save them to a parquet file ready for SFT training
+4. Include metadata: `is_correct`, `confidence`, `level`, `type`
+
+The output parquet file can be used directly with the SFT framework:
+
+```bash
+# Use correct solutions for training
+TRAIN_FILE=data/sft/correct_solutions.parquet \
+MODEL_NAME="Qwen/Qwen2.5-1.5B-Instruct" \
+bash scripts/run_sft_training.sh
+```
+
+**Why this is useful:**
+- **Self-improvement**: Fine-tune the model on its own correct solutions
+- **Bootstrapping**: Create training data without manual annotation
+- **Quality filtering**: Ensure training data only includes successful reasoning
+- **Iterative refinement**: Generate → Evaluate → Fine-tune → Repeat
+
 ### Verbose Output (Show Per-Problem Results)
 
 ```bash

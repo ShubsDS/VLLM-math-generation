@@ -120,8 +120,8 @@ def run_inference(
     llm = LLM(
         model=model_name,
         tensor_parallel_size=tensor_parallel_size,
-        max_model_len=4096,  # Adjust based on model capacity
-        gpu_memory_utilization=0.95,
+        max_model_len=16384,  # Adjust based on model capacity
+        gpu_memory_utilization=0.95,  # High utilization for large memory GPUs (H100 100GB)
         dtype="bfloat16",  # or "float16" depending on GPU support
     )
 
@@ -196,7 +196,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-tokens",
         type=int,
-        default=2048,
+        default=4096,
         help="Maximum tokens to generate per solution"
     )
     parser.add_argument(

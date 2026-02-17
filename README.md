@@ -19,7 +19,10 @@ This project uses [uv](https://github.com/astral-sh/uv) for fast Python environm
 │   ├── load_math_dataset.py      # Dataset preparation script
 │   ├── run_vllm_inference.py     # Main inference script
 │   ├── run_local_pipeline.py     # End-to-end local pipeline
-│   └── sanity_check.py           # Validation script
+│   ├── sanity_check.py           # Validation script
+│   ├── convert_jsonl_to_parquet.py  # JSONL to Parquet converter
+│   ├── run_sft_training.sh       # SFT training launcher
+│   └── run_sft_peft.sh           # SFT PEFT training launcher
 ├── evaluation/                    # Evaluation pipeline
 │   ├── README.md                 # Evaluation documentation
 │   ├── run_evaluation.py         # Main evaluation script
@@ -27,9 +30,16 @@ This project uses [uv](https://github.com/astral-sh/uv) for fast Python environm
 │   ├── answer_matcher.py         # Answer extraction & matching
 │   ├── metrics.py                # Metrics computation
 │   └── generate_report.py        # Report generation
+├── sft/                           # SFT training framework
+│   ├── README.md                 # Full SFT documentation
+│   ├── SFT_QUICKSTART.md         # Quick start guide
+│   ├── prepare_data.py           # Data preparation script
+│   └── example_train.sh          # End-to-end example
 ├── slurm/
 │   ├── run_inference.slurm       # Full inference job
-│   └── run_sanity_check.slurm    # Quick validation job
+│   ├── run_sanity_check.slurm    # Quick validation job
+│   ├── sft_training.slurm        # SFT training job
+│   └── sft_peft.slurm            # SFT PEFT training job
 ├── configs/
 │   └── inference_config.yaml     # Configuration reference
 ├── outputs/                       # Generated solutions
@@ -462,6 +472,79 @@ Accuracy: 78.26%
 Results are saved to `eval_results/` with comprehensive metrics and insights.
 
 For detailed usage and options, see [evaluation/README.md](evaluation/README.md).
+
+## Supervised Fine-Tuning (SFT)
+
+This project includes a complete SFT framework powered by [verl](https://github.com/volcengine/verl) for fine-tuning models on your generated math solutions using FSDP (Fully Sharded Data Parallel).
+
+### Quick Start
+
+```bash
+# 1. Prepare data from JSONL outputs
+python sft/prepare_data.py "outputs/math_test_solutions_*.jsonl" -o data/sft
+
+# 2. Run SFT training (single GPU, small model)
+TRAIN_FILE=data/sft/train.parquet \
+VAL_FILE=data/sft/val.parquet \
+MODEL_NAME="Qwen/Qwen2.5-1.5B-Instruct" \
+bash scripts/run_sft_training.sh
+
+# 3. Or use LoRA/PEFT for larger models
+TRAIN_FILE=data/sft/train.parquet \
+VAL_FILE=data/sft/val.parquet \
+MODEL_NAME="meta-llama/Llama-3.2-3B-Instruct" \
+bash scripts/run_sft_peft.sh
+```
+
+### Features
+
+- **FSDP Support**: Efficient multi-GPU training with Fully Sharded Data Parallel
+- **LoRA/PEFT**: Parameter-efficient fine-tuning for large models
+- **Automatic Data Conversion**: Convert JSONL → Parquet format
+- **SLURM Integration**: Ready-to-use batch scripts for cluster training
+- **Flexible Configuration**: Hydra-based config system with easy overrides
+- **Monitoring**: Built-in support for W&B logging and console metrics
+
+### Training Options
+
+| Script | Use Case | Memory Requirement |
+|--------|----------|-------------------|
+| `run_sft_training.sh` | Full fine-tuning | High (models < 3B) |
+| `run_sft_peft.sh` | LoRA/PEFT | Low (any model size) |
+
+### Example: Multi-GPU Training
+
+```bash
+NPROC_PER_NODE=4 \
+MODEL_NAME="meta-llama/Llama-3.2-3B-Instruct" \
+TRAIN_FILE=data/sft/train.parquet \
+VAL_FILE=data/sft/val.parquet \
+OUTPUT_DIR=./checkpoints/sft_llama_3b \
+BATCH_SIZE=2 \
+EPOCHS=3 \
+bash scripts/run_sft_training.sh
+```
+
+### SLURM Cluster Usage
+
+```bash
+# Submit full fine-tuning job (4 GPUs)
+sbatch slurm/sft_training.slurm
+
+# Submit PEFT job (2 GPUs)
+sbatch slurm/sft_peft.slurm
+
+# Monitor progress
+tail -f logs/sft_*.out
+```
+
+### Documentation
+
+- **[SFT Quickstart](sft/SFT_QUICKSTART.md)** - Get started in 30 seconds
+- **[Full SFT Guide](sft/README.md)** - Comprehensive documentation
+- **Example Pipeline**: `sft/example_train.sh` - End-to-end example
+
+For detailed configuration options, troubleshooting, and advanced usage, see the SFT documentation.
 
 ## Next Steps
 

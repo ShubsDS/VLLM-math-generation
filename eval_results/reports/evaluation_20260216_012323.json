@@ -1,0 +1,117 @@
+{
+  "metadata": {
+    "model_name": "Qwen/Qwen2.5-math-1.5b-extended-context",
+    "timestamp": "2026-02-16T01:23:23.540515",
+    "total_problems": 5000,
+    "evaluation_version": "1.0"
+  },
+  "metrics": {
+    "overall": {
+      "accuracy": 0.5562,
+      "correct": 2781,
+      "total": 5000,
+      "avg_tokens": 1322.274
+    },
+    "by_level": {
+      "Level 1": {
+        "accuracy": 0.7574370709382151,
+        "correct": 331,
+        "total": 437,
+        "percentage_of_dataset": 0.0874
+      },
+      "Level 2": {
+        "accuracy": 0.6991051454138703,
+        "correct": 625,
+        "total": 894,
+        "percentage_of_dataset": 0.1788
+      },
+      "Level 3": {
+        "accuracy": 0.6330680813439434,
+        "correct": 716,
+        "total": 1131,
+        "percentage_of_dataset": 0.2262
+      },
+      "Level 4": {
+        "accuracy": 0.514003294892916,
+        "correct": 624,
+        "total": 1214,
+        "percentage_of_dataset": 0.2428
+      },
+      "Level 5": {
+        "accuracy": 0.36631419939577037,
+        "correct": 485,
+        "total": 1324,
+        "percentage_of_dataset": 0.2648
+      }
+    },
+    "by_type": {
+      "Algebra": {
+        "accuracy": 0.6992417860151643,
+        "correct": 830,
+        "total": 1187,
+        "percentage_of_dataset": 0.2374
+      },
+      "Counting & Probability": {
+        "accuracy": 0.4978902953586498,
+        "correct": 236,
+        "total": 474,
+        "percentage_of_dataset": 0.0948
+      },
+      "Geometry": {
+        "accuracy": 0.4363256784968685,
+        "correct": 209,
+        "total": 479,
+        "percentage_of_dataset": 0.0958
+      },
+      "Intermediate Algebra": {
+        "accuracy": 0.41971207087486156,
+        "correct": 379,
+        "total": 903,
+        "percentage_of_dataset": 0.1806
+      },
+      "Number Theory": {
+        "accuracy": 0.55,
+        "correct": 297,
+        "total": 540,
+        "percentage_of_dataset": 0.108
+      },
+      "Prealgebra": {
+        "accuracy": 0.6475315729047072,
+        "correct": 564,
+        "total": 871,
+        "percentage_of_dataset": 0.1742
+      },
+      "Precalculus": {
+        "accuracy": 0.48717948717948717,
+        "correct": 266,
+        "total": 546,
+        "percentage_of_dataset": 0.1092
+      }
+    },
+    "detailed_stats": {
+      "error_rate": 0.4438,
+      "hardest_level": {
+        "level": "Level 5",
+        "accuracy": 0.36631419939577037
+      },
+      "easiest_level": {
+        "level": "Level 1",
+        "accuracy": 0.7574370709382151
+      },
+      "hardest_type": {
+        "type": "Intermediate Algebra",
+        "accuracy": 0.41971207087486156
+      },
+      "easiest_type": {
+        "type": "Algebra",
+        "accuracy": 0.6992417860151643
+      }
+    },
+    "metadata": {
+      "model_name": "Qwen/Qwen2.5-math-1.5b-extended-context",
+      "solutions_file": "outputs/math_test_solutions_20260216_003521.jsonl",
+      "metadata_file": "data/math_test_metadata.jsonl",
+      "total_problems_evaluated": 5000
+    }
+  }
+}

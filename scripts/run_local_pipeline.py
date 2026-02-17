@@ -149,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-tokens",
         type=int,
-        default=2048,
+        default=16384,
         help="Maximum tokens to generate per prompt",
     )
     parser.add_argument(

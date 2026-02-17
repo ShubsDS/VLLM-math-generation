@@ -20,6 +20,10 @@ wheels/
 .installed.cfg
 *.egg
 
+
+Qwen2.5-Math-1.5B
+outputs/
+eval_results/
 # Virtual environments (uv)
 .venv/
 venv/

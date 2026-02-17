@@ -30,6 +30,65 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from evaluation.evaluator import MATHEvaluator
 from evaluation.generate_report import ReportGenerator
 
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
+
+
+def save_correct_solutions(evaluator: MATHEvaluator, results: list, output_path: str) -> int:
+    """
+    Save only correct solutions to a parquet file for SFT training.
+
+    Args:
+        evaluator: MATHEvaluator instance with loaded solutions
+        results: List of evaluation results
+        output_path: Path to save the parquet file
+
+    Returns:
+        Number of correct solutions saved
+    """
+    if not HAS_PANDAS:
+        print("Error: pandas is required to save parquet files. Install with: pip install pandas")
+        return 0
+
+    # Filter correct results
+    correct_results = [r for r in results if r.get("is_correct", False)]
+
+    if not correct_results:
+        print("Warning: No correct solutions found. Parquet file not created.")
+        return 0
+
+    # Extract original solution data for correct problems
+    correct_solutions = []
+    for result in correct_results:
+        problem_id = result["id"]
+        if problem_id in evaluator.solutions:
+            solution_data = evaluator.solutions[problem_id].copy()
+            # Add evaluation metadata
+            solution_data["is_correct"] = True
+            solution_data["confidence"] = result.get("confidence", "exact")
+            solution_data["level"] = result.get("level", "Unknown")
+            solution_data["type"] = result.get("type", "Unknown")
+            correct_solutions.append(solution_data)
+
+    # Convert to DataFrame
+    df = pd.DataFrame(correct_solutions)
+
+    # Ensure output directory exists
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Save to parquet
+    df.to_parquet(output_path, index=False)
+
+    print(f"\n✓ Saved {len(correct_solutions)} correct solutions to: {output_path}")
+    print(f"  Accuracy: {len(correct_solutions)}/{len(results)} = {len(correct_solutions)/len(results):.2%}")
+    print(f"  Ready for SFT training with: data.train_files={output_path}")
+
+    return len(correct_solutions)
+
 
 def parse_args():
     """Parse command-line arguments."""
@@ -56,6 +115,12 @@ Examples:
       --metadata-file data/math_test_metadata.jsonl \\
       --report-format json \\
       --verbose
+
+  # Save only correct solutions for SFT training
+  python evaluation/run_evaluation.py \\
+      --solutions-file outputs/math_test_solutions_20260212_024306.jsonl \\
+      --metadata-file data/math_test_metadata.jsonl \\
+      --save-correct data/sft/correct_solutions.parquet
         """
     )
 
@@ -99,6 +164,12 @@ Examples:
         "--no-detailed",
         action="store_true",
         help="Skip generating detailed per-problem results file"
+    )
+    parser.add_argument(
+        "--save-correct",
+        type=str,
+        metavar="PATH",
+        help="Save only correct solutions to parquet file for SFT training (e.g., data/sft/correct_solutions.parquet)"
     )
 
     return parser.parse_args()
@@ -167,6 +238,14 @@ def main():
             if not args.no_detailed:
                 report_paths["detailed"] = report_gen.save_detailed_results()
 
+        # Save correct solutions for SFT training if requested
+        if args.save_correct:
+            num_saved = save_correct_solutions(evaluator, results, args.save_correct)
+            if num_saved > 0:
+                if report_paths is None:
+                    report_paths = {}
+                report_paths["correct_solutions"] = args.save_correct
+
         # Final summary
         print("\n" + "=" * 80)
         print("EVALUATION COMPLETE")
@@ -180,7 +259,10 @@ def main():
         if report_paths:
             print("\nGenerated reports:")
             for report_type, path in report_paths.items():
-                print(f"  - {report_type.capitalize()}: {Path(path).name}")
+                if report_type == "correct_solutions":
+                    print(f"  - {report_type.replace('_', ' ').title()}: {Path(path).name} (for SFT training)")
+                else:
+                    print(f"  - {report_type.capitalize()}: {Path(path).name}")
 
         print("=" * 80 + "\n")
 

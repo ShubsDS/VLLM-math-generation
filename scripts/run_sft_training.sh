@@ -6,14 +6,14 @@ set -e  # Exit on error
 
 # Default values
 NPROC_PER_NODE=${NPROC_PER_NODE:-1}
-MODEL_NAME=${MODEL_NAME:-"Qwen/Qwen2.5-0.5B-Instruct"}
-TRAIN_FILE=${TRAIN_FILE:-""}
-VAL_FILE=${VAL_FILE:-""}
-OUTPUT_DIR=${OUTPUT_DIR:-"./sft_output"}
+MODEL_NAME=${MODEL_NAME:-"./Qwen2.5-Math-1.5B"}
+TRAIN_FILE=${TRAIN_FILE:-"./data/sft/train.parquet"}
+VAL_FILE=${VAL_FILE:-"./data/sft/val.parquet"}
+OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/sft_qwen2.5_math_1.5b"}
 BATCH_SIZE=${BATCH_SIZE:-4}
 LEARNING_RATE=${LEARNING_RATE:-1e-5}
 EPOCHS=${EPOCHS:-3}
-MAX_LENGTH=${MAX_LENGTH:-2048}
+MAX_LENGTH=${MAX_LENGTH:-16384}
 PROJECT_NAME=${PROJECT_NAME:-"math-sft"}
 EXPERIMENT_NAME=${EXPERIMENT_NAME:-"math-sft-$(date +%Y%m%d_%H%M%S)"}
 

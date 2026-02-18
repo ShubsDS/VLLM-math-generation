@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+from transformers import AutoTokenizer
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -27,6 +28,22 @@ def load_jsonl(path: Path) -> list[dict]:
     return data
 
 
+def filter_by_length(df: pd.DataFrame, tokenizer, max_length: int, prompt_key: str, response_key: str) -> pd.DataFrame:
+    """Drop rows where prompt + response exceeds max_length tokens."""
+    lengths = []
+    for _, row in df.iterrows():
+        prompt_ids = tokenizer.encode(str(row[prompt_key]), add_special_tokens=False)
+        response_ids = tokenizer.encode(str(row[response_key]), add_special_tokens=False)
+        # +1 for EOS appended to response during training
+        lengths.append(len(prompt_ids) + len(response_ids) + 1)
+
+    mask = [l <= max_length for l in lengths]
+    filtered = df[mask].reset_index(drop=True)
+    dropped = len(df) - len(filtered)
+    print(f"Length filter: {len(df)} -> {len(filtered)} examples ({dropped} dropped, {dropped/len(df):.1%} of data)")
+    return filtered
+
+
 def prepare_sft_data(
     input_jsonl: str,
     output_dir: str,
@@ -35,6 +52,8 @@ def prepare_sft_data(
     seed: int = 42,
     prompt_key: str = "prompt",
     response_key: str = "generated_solution",
+    max_length: int | None = None,
+    model_name: str | None = None,
 ):
     """
     Prepare SFT training data from JSONL files.
@@ -47,6 +66,8 @@ def prepare_sft_data(
         seed: Random seed for shuffling
         prompt_key: Key in JSONL for prompts
         response_key: Key in JSONL for responses
+        max_length: If set, drop examples where prompt+response exceeds this many tokens
+        model_name: Model path/name for tokenizer (required when max_length is set)
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -81,6 +102,14 @@ def prepare_sft_data(
 
     # Convert to DataFrame
     df = pd.DataFrame(all_data)
+
+    # Filter by sequence length before splitting
+    if max_length is not None:
+        if model_name is None:
+            raise ValueError("--model must be set when using --max-length")
+        print(f"\nFiltering sequences longer than {max_length} tokens using tokenizer from {model_name}...")
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        df = filter_by_length(df, tokenizer, max_length, prompt_key, response_key)
 
     # Shuffle if requested
     if shuffle:
@@ -123,6 +152,8 @@ def main():
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--prompt-key", type=str, default="prompt", help="Key for prompts")
     parser.add_argument("--response-key", type=str, default="generated_solution", help="Key for responses")
+    parser.add_argument("--max-length", type=int, default=None, help="Drop examples exceeding this many tokens (prompt+response combined)")
+    parser.add_argument("--model", type=str, default=None, help="Model path/name for tokenizer (required with --max-length)")
 
     args = parser.parse_args()
 
@@ -134,6 +165,8 @@ def main():
         seed=args.seed,
         prompt_key=args.prompt_key,
         response_key=args.response_key,
+        max_length=args.max_length,
+        model_name=args.model,
     )
 
 

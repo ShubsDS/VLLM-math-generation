@@ -1,0 +1,69 @@
+W0218 18:36:51.057000 3233103 torch/distributed/run.py:803] 
+W0218 18:36:51.057000 3233103 torch/distributed/run.py:803] *****************************************
+W0218 18:36:51.057000 3233103 torch/distributed/run.py:803] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0218 18:36:51.057000 3233103 torch/distributed/run.py:803] *****************************************
+Error executing job with overrides: ['data.train_files=./data/sft/train.parquet', 'data.val_files=./data/sft/val.parquet', 'data.prompt_key=prompt', 'data.response_key=generated_solution', 'data.micro_batch_size_per_gpu=4', 'data.max_length=16384', 'data.truncation=error', 'model.partial_pretrain=./Qwen2.5-Math-1.5B', 'optim.lr=1e-5', 'trainer.default_local_dir=./checkpoints/sft_qwen2.5_math_1.5b', 'trainer.project_name=math-sft', 'trainer.experiment_name=math-sft-20260218_183630', 'trainer.total_epochs=3', 'trainer.logger=["console","wandb"]']
+Traceback (most recent call last):
+  File "/u/fvc9ch/nlp_research/verl/verl/trainer/fsdp_sft_trainer.py", line 839, in main
+    run_sft(config)
+  File "/u/fvc9ch/nlp_research/verl/verl/trainer/fsdp_sft_trainer.py", line 802, in run_sft
+    local_rank, rank, world_size = initialize_global_process_group()
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/u/fvc9ch/nlp_research/verl/verl/utils/distributed.py", line 65, in initialize_global_process_group
+    get_torch_device().set_device(local_rank)
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/cuda/__init__.py", line 567, in set_device
+    torch._C._cuda_setDevice(device)
+torch.AcceleratorError: CUDA error: invalid device ordinal
+GPU device may be out of range, do you have enough GPUs?
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+dataset len: 3766
+dataset len: 418
+Normalize batch size by dp 2
+Using sequence parallel size: 1
+Using remove padding: False
+Using FSDP rank 0 and size 2 for data distribution
+/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+`torch_dtype` is deprecated! Use `dtype` instead!
+[rank1]:[W218 18:37:25.801714648 ProcessGroupNCCL.cpp:1524] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+Flash Attention 2 only supports torch.float16 and torch.bfloat16 dtypes, but the current dype in Qwen2ForCausalLM is torch.float32. You should run training or inference using Automatic Mixed-Precision via the `with torch.autocast(device_type='torch_device'):` decorator, or load the model with the `dtype` argument. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="flash_attention_2", dtype=torch.float16)`
+Flash Attention 2 only supports torch.float16 and torch.bfloat16 dtypes, but the current dype in Qwen2Model is torch.float32. You should run training or inference using Automatic Mixed-Precision via the `with torch.autocast(device_type='torch_device'):` decorator, or load the model with the `dtype` argument. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="flash_attention_2", dtype=torch.float16)`
+W0218 18:37:26.295000 3233103 torch/distributed/elastic/multiprocessing/api.py:908] Sending process 3233113 closing signal SIGTERM
+E0218 18:37:26.469000 3233103 torch/distributed/elastic/multiprocessing/api.py:882] failed (exitcode: 1) local_rank: 1 (pid: 3233114) of binary: /u/fvc9ch/nlp_research/VLLM-math-generation/.venv/bin/python3
+Traceback (most recent call last):
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 357, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/distributed/run.py", line 936, in main
+    run(args)
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/distributed/run.py", line 927, in run
+    elastic_launch(
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/distributed/launcher/api.py", line 156, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/distributed/launcher/api.py", line 293, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+verl.trainer.fsdp_sft_trainer FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-02-18_18:37:26
+  host      : serval06
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 3233114)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

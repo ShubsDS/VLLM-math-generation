@@ -5,7 +5,7 @@
 set -e  # Exit on error
 
 # Default values
-NPROC_PER_NODE=${NPROC_PER_NODE:-1}
+NPROC_PER_NODE=${NPROC_PER_NODE:-$(python3 -c "import torch; print(torch.cuda.device_count())")}
 MODEL_NAME=${MODEL_NAME:-"./Qwen2.5-Math-1.5B"}
 TRAIN_FILE=${TRAIN_FILE:-"./data/sft/train.parquet"}
 VAL_FILE=${VAL_FILE:-"./data/sft/val.parquet"}
@@ -135,6 +135,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     data.max_length=$MAX_LENGTH \
     data.truncation=error \
     model.partial_pretrain=$MODEL_NAME \
+    model.fsdp_config.model_dtype=bf16 \
     optim.lr=$LEARNING_RATE \
     trainer.default_local_dir=$OUTPUT_DIR \
     trainer.project_name=$PROJECT_NAME \

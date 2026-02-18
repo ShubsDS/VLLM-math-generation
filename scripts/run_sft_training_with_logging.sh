@@ -16,6 +16,7 @@ EPOCHS=${EPOCHS:-3}
 MAX_LENGTH=${MAX_LENGTH:-16384}
 PROJECT_NAME=${PROJECT_NAME:-"math-sft"}
 LOG_RESPONSE_LENGTHS=${LOG_RESPONSE_LENGTHS:-true}
+EXPERIMENT_NAME=${EXPERIMENT_NAME:-"math-sft-$(date +%Y%m%d_%H%M%S)"}
 
 # Check if train file is provided
 if [ -z "$TRAIN_FILE" ]; then
@@ -82,11 +83,13 @@ for idx, row in train_df.iterrows():
     response_lengths.append(length)
 
 # Save statistics
+mean_len = sum(response_lengths) / len(response_lengths) if response_lengths else 0
 stats = {
-    "mean": sum(response_lengths) / len(response_lengths) if response_lengths else 0,
+    "mean": mean_len,
     "min": min(response_lengths) if response_lengths else 0,
     "max": max(response_lengths) if response_lengths else 0,
     "median": sorted(response_lengths)[len(response_lengths) // 2] if response_lengths else 0,
+    "std": (sum((x - mean_len) ** 2 for x in response_lengths) / len(response_lengths)) ** 0.5 if response_lengths else 0,
     "total_examples": len(response_lengths)
 }
 

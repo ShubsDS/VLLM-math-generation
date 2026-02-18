@@ -16,6 +16,8 @@ EPOCHS=${EPOCHS:-3}
 MAX_LENGTH=${MAX_LENGTH:-16384}
 PROJECT_NAME=${PROJECT_NAME:-"math-sft"}
 EXPERIMENT_NAME=${EXPERIMENT_NAME:-"math-sft-$(date +%Y%m%d_%H%M%S)"}
+# Attention implementation: flash_attention_2 (requires flash_attn), sdpa, or eager
+ATTN_IMPL=${ATTN_IMPL:-"sdpa"}
 
 # Check if train file is provided
 if [ -z "$TRAIN_FILE" ]; then
@@ -42,6 +44,7 @@ echo "Learning rate: $LEARNING_RATE"
 echo "Epochs: $EPOCHS"
 echo "Max length: $MAX_LENGTH"
 echo "GPUs: $NPROC_PER_NODE"
+echo "Attn impl: $ATTN_IMPL"
 echo "=========================================="
 
 # Run training
@@ -60,6 +63,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     trainer.experiment_name=$EXPERIMENT_NAME \
     trainer.total_epochs=$EPOCHS \
     trainer.logger='["console","wandb"]' \
+    model.attn_implementation=$ATTN_IMPL \
     "$@"
 
 echo "Training complete! Model saved to: $OUTPUT_DIR"

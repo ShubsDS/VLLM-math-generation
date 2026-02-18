@@ -133,6 +133,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     data.response_key=generated_solution \
     data.micro_batch_size_per_gpu=$BATCH_SIZE \
     data.max_length=$MAX_LENGTH \
+    data.truncation=error \
     model.partial_pretrain=$MODEL_NAME \
     optim.lr=$LEARNING_RATE \
     trainer.default_local_dir=$OUTPUT_DIR \

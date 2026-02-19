@@ -36,6 +36,8 @@ TEST_FREQ=${TEST_FREQ:-1}
 GENERATION_PROBE_SIZE=${GENERATION_PROBE_SIZE:-5}
 # Number of val prompts for post-training checkpoint inference (JSON + plot)
 PROBE_SIZE=${PROBE_SIZE:-50}
+# Save a checkpoint every N epochs (default 5 = checkpoint at epoch 5, 10, 15, ...)
+SAVE_EVERY_N_EPOCHS=${SAVE_EVERY_N_EPOCHS:-5}
 
 echo "=========================================="
 echo "SFT Training Configuration"
@@ -53,6 +55,7 @@ echo "GPUs: $NPROC_PER_NODE"
 echo "Val/probe frequency (steps): $TEST_FREQ"
 echo "In-training generation probe size: $GENERATION_PROBE_SIZE"
 echo "Post-training checkpoint probe size: $PROBE_SIZE"
+echo "Save checkpoint every N epochs: $SAVE_EVERY_N_EPOCHS"
 echo "=========================================="
 
 mkdir -p "$OUTPUT_DIR"
@@ -65,8 +68,10 @@ print(math.floor(len(df) / $TRAIN_BATCH_SIZE))
 ")
 echo "Steps per epoch: $STEPS_PER_EPOCH"
 
+SAVE_FREQ=$(( STEPS_PER_EPOCH * SAVE_EVERY_N_EPOCHS ))
+echo "Checkpoint every $SAVE_EVERY_N_EPOCHS epochs ($SAVE_FREQ steps)"
+
 # Run training
-# Save an HF-format checkpoint every epoch so we can load it for inference
 torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     -m verl.trainer.fsdp_sft_trainer \
     data.train_files=$TRAIN_FILE \
@@ -86,11 +91,11 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     trainer.project_name=$PROJECT_NAME \
     trainer.experiment_name=$EXPERIMENT_NAME \
     trainer.total_epochs=$EPOCHS \
-    trainer.save_freq=$STEPS_PER_EPOCH \
+    trainer.save_freq=$SAVE_FREQ \
     trainer.test_freq=$TEST_FREQ \
     trainer.generation_probe_size=$GENERATION_PROBE_SIZE \
     'trainer.checkpoint.save_contents=["model","hf_model"]' \
-    trainer.resume_mode=disable \
+    trainer.resume_mode=auto \
     trainer.logger='["console","wandb"]' \
     "$@" 2>&1 | tee "$OUTPUT_DIR/training.log"
 

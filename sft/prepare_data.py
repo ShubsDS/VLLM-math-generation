@@ -29,13 +29,22 @@ def load_jsonl(path: Path) -> list[dict]:
 
 
 def filter_by_length(df: pd.DataFrame, tokenizer, max_length: int, prompt_key: str, response_key: str) -> pd.DataFrame:
-    """Drop rows where prompt + response exceeds max_length tokens."""
+    """Drop rows where prompt + response exceeds max_length tokens.
+
+    Replicates the exact tokenization verl's SFTDataset performs, including
+    applying the chat template to the prompt, so the filter is accurate.
+    """
     lengths = []
     for _, row in df.iterrows():
-        prompt_ids = tokenizer.encode(str(row[prompt_key]), add_special_tokens=False)
-        response_ids = tokenizer.encode(str(row[response_key]), add_special_tokens=False)
-        # +1 for EOS appended to response during training
-        lengths.append(len(prompt_ids) + len(response_ids) + 1)
+        # Mirror verl's SFTDataset.__getitem__ exactly
+        prompt_chat = [{"role": "user", "content": str(row[prompt_key])}]
+        prompt_str = tokenizer.apply_chat_template(
+            prompt_chat, add_generation_prompt=True, tokenize=False
+        )
+        response_str = str(row[response_key]) + tokenizer.eos_token
+        prompt_ids = tokenizer(prompt_str, add_special_tokens=False)["input_ids"]
+        response_ids = tokenizer(response_str, add_special_tokens=False)["input_ids"]
+        lengths.append(len(prompt_ids) + len(response_ids))
 
     mask = [l <= max_length for l in lengths]
     filtered = df[mask].reset_index(drop=True)

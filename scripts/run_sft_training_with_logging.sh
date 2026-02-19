@@ -1,8 +1,13 @@
 #!/bin/bash
 # SFT Training Script with Response Length Tracking
 #
-# Trains the model and after each epoch runs inference on a small probe set
-# to measure how the student model's generated response length changes over training.
+# Two complementary length-measurement mechanisms:
+#   1. During training (wandb): every TEST_FREQ steps, run greedy decoding on
+#      GENERATION_PROBE_SIZE val prompts and log val/avg_generated_length.
+#      Set GENERATION_PROBE_SIZE=0 to disable.
+#   2. After training (JSON + plot): load each epoch HF checkpoint from disk,
+#      run inference on PROBE_SIZE val prompts, save response_length_by_checkpoint.json
+#      and response_length_vs_training.png.
 
 set -e
 
@@ -21,7 +26,12 @@ MAX_LENGTH=${MAX_LENGTH:-16384}
 TRAIN_BATCH_SIZE=${TRAIN_BATCH_SIZE:-256}
 PROJECT_NAME=${PROJECT_NAME:-"math-sft"}
 EXPERIMENT_NAME=${EXPERIMENT_NAME:-"math-sft-$(date +%Y%m%d_%H%M%S)"}
-# Number of val examples to generate from at each epoch checkpoint for length measurement
+# How often (in steps) to run validation + in-training generation probe
+TEST_FREQ=${TEST_FREQ:-5}
+# Number of val prompts for in-training greedy-decoding probe (logged to wandb as val/avg_generated_length)
+# Set to 0 to disable in-training generation measurement (saves time if you only want epoch-level data)
+GENERATION_PROBE_SIZE=${GENERATION_PROBE_SIZE:-10}
+# Number of val prompts for post-training checkpoint inference (JSON + plot)
 PROBE_SIZE=${PROBE_SIZE:-50}
 
 echo "=========================================="
@@ -37,7 +47,9 @@ echo "Learning rate: $LEARNING_RATE"
 echo "Epochs: $EPOCHS"
 echo "Max length: $MAX_LENGTH"
 echo "GPUs: $NPROC_PER_NODE"
-echo "Probe size (for length measurement): $PROBE_SIZE"
+echo "Val/probe frequency (steps): $TEST_FREQ"
+echo "In-training generation probe size: $GENERATION_PROBE_SIZE"
+echo "Post-training checkpoint probe size: $PROBE_SIZE"
 echo "=========================================="
 
 mkdir -p "$OUTPUT_DIR"
@@ -72,6 +84,8 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     trainer.experiment_name=$EXPERIMENT_NAME \
     trainer.total_epochs=$EPOCHS \
     trainer.save_freq=$STEPS_PER_EPOCH \
+    trainer.test_freq=$TEST_FREQ \
+    trainer.generation_probe_size=$GENERATION_PROBE_SIZE \
     'trainer.checkpoint.save_contents=["model","hf_model"]' \
     trainer.resume_mode=disable \
     trainer.logger='["console","wandb"]' \

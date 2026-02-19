@@ -1,0 +1,35 @@
+Epoch 1/3:   0%|          | 0/14 [00:00<?, ?it/s]/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:659: UserWarning: pin_memory_device is deprecated, the current accelerator will be used as the device,ignore pin_memory_device='cuda'.
+  warnings.warn(
+Epoch 1/3:   0%|          | 0/14 [00:19<?, ?it/s]
+Error executing job with overrides: ['data.train_files=./data/sft/train.parquet', 'data.val_files=./data/sft/val.parquet', 'data.prompt_key=prompt', 'data.response_key=generated_solution', 'data.micro_batch_size_per_gpu=4', 'data.max_length=16384', 'data.truncation=error', 'model.partial_pretrain=./Qwen2.5-Math-1.5B', 'model.fsdp_config.model_dtype=bf16', 'optim.lr=1e-5', 'trainer.default_local_dir=./checkpoints/sft_qwen2.5_math_1.5b', 'trainer.project_name=math-sft', 'trainer.experiment_name=math-sft-20260218_184756', 'trainer.total_epochs=3', 'trainer.logger=["console","wandb"]']
+Traceback (most recent call last):
+  File "/u/fvc9ch/nlp_research/verl/verl/trainer/fsdp_sft_trainer.py", line 839, in main
+    run_sft(config)
+  File "/u/fvc9ch/nlp_research/verl/verl/trainer/fsdp_sft_trainer.py", line 832, in run_sft
+    trainer.fit()
+  File "/u/fvc9ch/nlp_research/verl/verl/trainer/fsdp_sft_trainer.py", line 764, in fit
+    metric = self.training_step(data)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/u/fvc9ch/nlp_research/verl/verl/trainer/fsdp_sft_trainer.py", line 482, in training_step
+    loss = self._compute_loss_and_backward(batch=micro_batch, n_micro_batches=n_micro_batches)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/u/fvc9ch/nlp_research/verl/verl/trainer/fsdp_sft_trainer.py", line 395, in _compute_loss_and_backward
+    loss = loss_fct(shift_logits, shift_labels)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/nn/modules/loss.py", line 1385, in forward
+    return F.cross_entropy(
+           ^^^^^^^^^^^^^^^^
+  File "/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/nn/functional.py", line 3458, in cross_entropy
+    return torch._C._nn.cross_entropy_loss(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 37.09 GiB. GPU 0 has a total capacity of 93.10 GiB of which 25.17 GiB is free. Including non-PyTorch memory, this process has 67.92 GiB memory in use. Of the allocated memory 64.70 GiB is allocated by PyTorch, and 2.01 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.

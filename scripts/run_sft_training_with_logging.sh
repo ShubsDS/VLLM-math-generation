@@ -4,6 +4,8 @@
 
 set -e  # Exit on error
 
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 # Default values
 NPROC_PER_NODE=${NPROC_PER_NODE:-$(python3 -c "import torch; print(torch.cuda.device_count())")}
 MODEL_NAME=${MODEL_NAME:-"./Qwen2.5-Math-1.5B"}
@@ -136,6 +138,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     data.truncation=error \
     model.partial_pretrain=$MODEL_NAME \
     model.fsdp_config.model_dtype=bf16 \
+    use_remove_padding=true \
     optim.lr=$LEARNING_RATE \
     trainer.default_local_dir=$OUTPUT_DIR \
     trainer.project_name=$PROJECT_NAME \

@@ -1,0 +1,28 @@
+dataset len: 3735
+dataset len: 414
+Normalize batch size by dp 1
+Using sequence parallel size: 1
+Using remove padding: True
+Using FSDP rank 0 and size 1 for data distribution
+/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+`torch_dtype` is deprecated! Use `dtype` instead!
+Monkey patch _flash_attention_forward in transformers.integrations.flash_attention
+Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is None
+[2026-02-18 21:35:08,367][liger_kernel.transformers.monkey_patch][INFO] - Applying Liger kernels to model instance with model type: qwen2 with kwargs: {}
+functools.partial(<function _or_policy at 0x151a56b832e0>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x151a56b831a0>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+NCCL version 2.27.5+cuda12.9
+Number of steps/epoch 14, number of epochs 3, total number of steps 42
+{'optim': {'_target_': 'verl.workers.config.FSDPOptimizerConfig', 'optimizer': 'AdamW', 'optimizer_impl': 'torch.optim', 'lr': 1e-05, 'lr_warmup_steps_ratio': 0.1, 'total_training_steps': -1, 'weight_decay': 0.01, 'lr_warmup_steps': -1, 'betas': [0.9, 0.95], 'clip_grad': 1.0, 'min_lr_ratio': 0.0, 'num_cycles': 0.5, 'lr_scheduler_type': 'constant', 'warmup_style': None, 'override_optimizer_config': None, 'lr_scheduler': 'cosine'}, 'data': {'train_batch_size': 256, 'micro_batch_size': None, 'micro_batch_size_per_gpu': 2, 'train_files': './data/sft/train.parquet', 'val_files': './data/sft/val.parquet', 'train_max_samples': -1, 'val_max_samples': -1, 'prompt_key': 'prompt', 'response_key': 'generated_solution', 'prompt_dict_keys': None, 'response_dict_keys': None, 'multiturn': {'enable': False, 'messages_key': 'messages', 'tools_key': 'tools', 'enable_thinking_key': 'enable_thinking'}, 'max_length': 16384, 'truncation': 'error', 'balance_dp_token': False, 'chat_template': None, 'custom_cls': {'path': None, 'name': None}, 'use_shm': False, 'apply_chat_template_kwargs': {}}, 'model': {'partial_pretrain': './Qwen2.5-Math-1.5B', 'use_shm': False, 'fsdp_config': {'model_dtype': 'bf16', 'wrap_policy': {'min_num_params': 0}, 'cpu_offload': False, 'offload_params': False}, 'external_lib': None, 'enable_gradient_checkpointing': True, 'trust_remote_code': False, 'lora_rank': 0, 'lora_alpha': 16, 'target_modules': 'all-linear', 'use_liger': True, 'attn_implementation': 'flash_attention_2', 'strategy': 'fsdp2'}, 'ulysses_sequence_parallel_size': 1, 'use_remove_padding': True, 'trainer': {'default_local_dir': './checkpoints/sft_qwen2.5_math_1.5b', 'default_hdfs_dir': None, 'project_name': 'math-sft', 'experiment_name': 'math-sft-20260218_213500', 'total_epochs': 3, 'total_training_steps': None, 'logger': ['console', 'wandb'], 'seed': 1, 'save_freq': 14, 'test_freq': -1, 'nnodes': 1, 'n_gpus_per_node': 8, 'max_ckpt_to_keep': None, 'resume_mode': 'disable', 'resume_from_path': None, 'checkpoint': {'save_contents': ['model', 'hf_model'], 'load_contents': '${trainer.checkpoint.save_contents}'}, 'device': 'cuda'}}
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /u/fvc9ch/.netrc.
+wandb: Currently logged in as: shrubsdaone (shubs-university-of-virginia) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.25.0
+wandb: Run data is saved locally in /u/fvc9ch/nlp_research/VLLM-math-generation/wandb/run-20260218_213510-duw7g6c7
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run math-sft-20260218_213500
+wandb: ⭐️ View project at https://wandb.ai/shubs-university-of-virginia/math-sft
+wandb: 🚀 View run at https://wandb.ai/shubs-university-of-virginia/math-sft/runs/duw7g6c7
+Epoch 1/3:   0%|          | 0/14 [00:00<?, ?it/s]/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:627: UserWarning: This DataLoader will create 8 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+/u/fvc9ch/nlp_research/VLLM-math-generation/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:659: UserWarning: pin_memory_device is deprecated, the current accelerator will be used as the device,ignore pin_memory_device='cuda'.
+  warnings.warn(

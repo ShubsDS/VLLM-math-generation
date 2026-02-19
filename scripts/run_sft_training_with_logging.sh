@@ -26,11 +26,14 @@ MAX_LENGTH=${MAX_LENGTH:-16384}
 TRAIN_BATCH_SIZE=${TRAIN_BATCH_SIZE:-256}
 PROJECT_NAME=${PROJECT_NAME:-"math-sft"}
 EXPERIMENT_NAME=${EXPERIMENT_NAME:-"math-sft-$(date +%Y%m%d_%H%M%S)"}
-# How often (in steps) to run validation + in-training generation probe
-TEST_FREQ=${TEST_FREQ:-5}
-# Number of val prompts for in-training greedy-decoding probe (logged to wandb as val/avg_generated_length)
-# Set to 0 to disable in-training generation measurement (saves time if you only want epoch-level data)
-GENERATION_PROBE_SIZE=${GENERATION_PROBE_SIZE:-10}
+# How often (in steps) to run validation + in-training generation probe.
+# Default 1 = run every step for maximum data density (slower but smooth curve).
+# Increase (e.g. 5) to reduce overhead if each probe step is too slow.
+TEST_FREQ=${TEST_FREQ:-1}
+# Number of val prompts for in-training greedy-decoding probe (logged to wandb as val/avg_generated_length).
+# Smaller = faster per-step overhead. 5-10 is usually enough for a reliable mean.
+# Set to 0 to disable in-training generation measurement entirely.
+GENERATION_PROBE_SIZE=${GENERATION_PROBE_SIZE:-5}
 # Number of val prompts for post-training checkpoint inference (JSON + plot)
 PROBE_SIZE=${PROBE_SIZE:-50}
 

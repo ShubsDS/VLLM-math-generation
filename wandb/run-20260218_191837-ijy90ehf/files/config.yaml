@@ -1,0 +1,235 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            p66s8x24ybk6saasksz7q8ij1qu78b4e:
+                args:
+                    - data.train_files=./data/sft/train.parquet
+                    - data.val_files=./data/sft/val.parquet
+                    - data.prompt_key=prompt
+                    - data.response_key=generated_solution
+                    - data.micro_batch_size_per_gpu=2
+                    - data.max_length=16384
+                    - data.truncation=error
+                    - model.partial_pretrain=./Qwen2.5-Math-1.5B
+                    - model.fsdp_config.model_dtype=bf16
+                    - use_remove_padding=true
+                    - model.use_liger=true
+                    - optim.lr=1e-5
+                    - trainer.default_local_dir=./checkpoints/sft_qwen2.5_math_1.5b
+                    - trainer.project_name=math-sft
+                    - trainer.experiment_name=math-sft-20260218_191811
+                    - trainer.total_epochs=3
+                    - trainer.logger=["console","wandb"]
+                cpu_count: 32
+                cpu_count_logical: 64
+                cudaVersion: "12.8"
+                disk:
+                    /:
+                        total: "940744544256"
+                        used: "22221357056"
+                email: shrubsdaone@gmail.com
+                executable: /u/fvc9ch/nlp_research/VLLM-math-generation/.venv/bin/python3
+                git:
+                    commit: c2010c0c527af9089477eccfc9416835a57b108f
+                    remote: git@github.com:ShubsDS/VLLM-math-generation.git
+                gpu: NVIDIA H100 NVL
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Hopper
+                      cudaCores: 16896
+                      memoryTotal: "100485038080"
+                      name: NVIDIA H100 NVL
+                      uuid: GPU-bc82899f-c10b-f99c-d79a-0b877d0589e7
+                host: serval06
+                memory:
+                    total: "1622666375168"
+                os: Linux-5.15.0-151-generic-x86_64-with-glibc2.35
+                program: -m verl.trainer.fsdp_sft_trainer
+                python: CPython 3.12.11
+                root: /u/fvc9ch/nlp_research/VLLM-math-generation
+                slurm:
+                    conf: /etc/slurm/slurm.conf
+                    cpu_bind: quiet,mask_cpu:0x0000000000000001
+                    cpu_bind_list: "0x0000000000000001"
+                    cpu_bind_type: 'mask_cpu:'
+                    cpu_bind_verbose: quiet
+                    cpus_on_node: "30"
+                    distribution: cyclic
+                    gpus_on_node: "1"
+                    gtids: "0"
+                    job_cpus_per_node: "30"
+                    job_end_time: "1771774185"
+                    job_gid: "90004"
+                    job_id: "5458906"
+                    job_name: bash
+                    job_nodelist: serval06
+                    job_partition: gpu
+                    job_start_time: "1771428585"
+                    job_uid: "15569343"
+                    job_user: fvc9ch
+                    jobid: "5458906"
+                    launch_node_ipaddr: 128.143.63.238
+                    localid: "0"
+                    mem_per_node: "819200"
+                    mpi_type: pmi2
+                    nnodes: "1"
+                    nodeid: "0"
+                    nodelist: serval06
+                    nprocs: "1"
+                    ntasks: "1"
+                    prio_process: "0"
+                    procid: "0"
+                    pty_port: "36351"
+                    pty_win_col: "146"
+                    pty_win_row: "45"
+                    srun_comm_host: 128.143.63.238
+                    srun_comm_port: "45399"
+                    step_gpus: "0"
+                    step_id: "0"
+                    step_launcher_port: "45399"
+                    step_nodelist: serval06
+                    step_num_nodes: "1"
+                    step_num_tasks: "1"
+                    step_tasks_per_node: "1"
+                    stepid: "0"
+                    task_pid: "3201144"
+                    tasks_per_node: "1"
+                    topology_addr: serval06
+                    topology_addr_pattern: node
+                    umask: "0022"
+                startedAt: "2026-02-19T00:18:37.431879Z"
+                writerId: p66s8x24ybk6saasksz7q8ij1qu78b4e
+        m: []
+        python_version: 3.12.11
+        t:
+            "1":
+                - 1
+                - 11
+                - 30
+                - 41
+                - 49
+                - 50
+                - 51
+                - 71
+                - 98
+                - 105
+            "2":
+                - 1
+                - 11
+                - 30
+                - 41
+                - 49
+                - 50
+                - 51
+                - 71
+                - 98
+                - 105
+            "3":
+                - 2
+                - 13
+                - 16
+                - 61
+            "4": 3.12.11
+            "5": 0.25.0
+            "6": 4.57.6
+            "12": 0.25.0
+            "13": linux-x86_64
+data:
+    value:
+        balance_dp_token: false
+        chat_template: null
+        custom_cls:
+            name: null
+            path: null
+        max_length: 16384
+        micro_batch_size: null
+        micro_batch_size_per_gpu: 2
+        multiturn:
+            enable: false
+            enable_thinking_key: enable_thinking
+            messages_key: messages
+            tools_key: tools
+        prompt_dict_keys: null
+        prompt_key: prompt
+        response_dict_keys: null
+        response_key: generated_solution
+        train_batch_size: 256
+        train_files: ./data/sft/train.parquet
+        train_max_samples: -1
+        truncation: error
+        use_shm: false
+        val_files: ./data/sft/val.parquet
+        val_max_samples: -1
+model:
+    value:
+        attn_implementation: flash_attention_2
+        enable_gradient_checkpointing: true
+        external_lib: null
+        fsdp_config:
+            cpu_offload: false
+            model_dtype: bf16
+            offload_params: false
+            wrap_policy:
+                min_num_params: 0
+        lora_alpha: 16
+        lora_rank: 0
+        partial_pretrain: ./Qwen2.5-Math-1.5B
+        strategy: fsdp2
+        target_modules: all-linear
+        trust_remote_code: false
+        use_liger: true
+        use_shm: false
+optim:
+    value:
+        _target_: verl.workers.config.FSDPOptimizerConfig
+        betas:
+            - 0.9
+            - 0.95
+        clip_grad: 1
+        lr: 1e-05
+        lr_scheduler: cosine
+        lr_scheduler_type: constant
+        lr_warmup_steps: -1
+        lr_warmup_steps_ratio: 0.1
+        min_lr_ratio: 0
+        num_cycles: 0.5
+        optimizer: AdamW
+        optimizer_impl: torch.optim
+        override_optimizer_config: null
+        total_training_steps: -1
+        warmup_style: null
+        weight_decay: 0.01
+trainer:
+    value:
+        checkpoint:
+            load_contents:
+                - model
+                - optimizer
+                - extra
+            save_contents:
+                - model
+                - optimizer
+                - extra
+        default_hdfs_dir: null
+        default_local_dir: ./checkpoints/sft_qwen2.5_math_1.5b
+        device: cuda
+        experiment_name: math-sft-20260218_191811
+        logger:
+            - console
+            - wandb
+        max_ckpt_to_keep: null
+        n_gpus_per_node: 8
+        nnodes: 1
+        project_name: math-sft
+        resume_from_path: null
+        resume_mode: auto
+        save_freq: -1
+        seed: 1
+        test_freq: -1
+        total_epochs: 3
+        total_training_steps: null
+ulysses_sequence_parallel_size:
+    value: 1
+use_remove_padding:
+    value: true

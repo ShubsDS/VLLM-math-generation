@@ -139,6 +139,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     model.partial_pretrain=$MODEL_NAME \
     model.fsdp_config.model_dtype=bf16 \
     use_remove_padding=true \
+    model.use_liger=true \
     optim.lr=$LEARNING_RATE \
     trainer.default_local_dir=$OUTPUT_DIR \
     trainer.project_name=$PROJECT_NAME \

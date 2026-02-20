@@ -37,7 +37,7 @@ inference:
 
 dataset:
   name: "hendrycks/competition_math"
-  split: "test"
+  split: "train"
   subset: "all"  # or specific subject like "algebra", "geometry"
   max_samples: null  # null for all, or integer for subset
 

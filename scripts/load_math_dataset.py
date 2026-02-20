@@ -167,7 +167,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--split",
         type=str,
-        default="test",
+        default="train",
         choices=["train", "test"],
         help="Dataset split to use"
     )

@@ -18,10 +18,10 @@ NPROC_PER_NODE=${NPROC_PER_NODE:-$(python3 -c "import torch; print(torch.cuda.de
 MODEL_NAME=${MODEL_NAME:-"./Qwen2.5-Math-1.5B"}
 TRAIN_FILE=${TRAIN_FILE:-"./data/sft/train.parquet"}
 VAL_FILE=${VAL_FILE:-"./data/sft/val.parquet"}
-OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/sft_qwen2.5_math_1.5b"}
+OUTPUT_DIR=${OUTPUT_DIR:-"/bigtemp/fvc9ch/checkpoints/sft_qwen2.5_math_1.5b"}
 BATCH_SIZE=${BATCH_SIZE:-1}
 LEARNING_RATE=${LEARNING_RATE:-1e-5}
-EPOCHS=${EPOCHS:-15}
+EPOCHS=${EPOCHS:-10}
 MAX_LENGTH=${MAX_LENGTH:-16384}
 TRAIN_BATCH_SIZE=${TRAIN_BATCH_SIZE:-256}
 PROJECT_NAME=${PROJECT_NAME:-"math-sft"}
@@ -37,7 +37,7 @@ GENERATION_PROBE_SIZE=${GENERATION_PROBE_SIZE:-5}
 # Number of val prompts for post-training checkpoint inference (JSON + plot)
 PROBE_SIZE=${PROBE_SIZE:-50}
 # Save a checkpoint every N epochs (default 5 = checkpoint at epoch 5, 10, 15, ...)
-SAVE_EVERY_N_EPOCHS=${SAVE_EVERY_N_EPOCHS:-5}
+SAVE_EVERY_N_EPOCHS=${SAVE_EVERY_N_EPOCHS:-2}
 
 echo "=========================================="
 echo "SFT Training Configuration"

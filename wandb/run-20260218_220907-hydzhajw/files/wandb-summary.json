@@ -1,1 +1,0 @@
-{"val/loss":0.7049280405044556,"train/lr(1e-3)":0.00047619047619047624,"_step":1,"_wandb":{"runtime":340},"train/loss":0.7198879718780518,"train/avg_response_length":2873.421875,"train/response_tokens_per_step":735596,"val/avg_generated_length":702.2,"_runtime":340.622326941,"_timestamp":1.7714708889382882e+09,"train/time(s)":144.44521617889404}

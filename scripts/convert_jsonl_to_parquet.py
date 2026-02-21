@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""
-Convert JSONL files to Parquet format for verl SFT training.
-
-This script converts the generated math solutions JSONL files into the parquet
-format expected by verl's SFTDataset.
-"""
+"""Convert correct-teacher JSONL into train/val parquet files for SFT."""
 
 import argparse
 import json
@@ -13,81 +8,118 @@ from pathlib import Path
 import pandas as pd
 
 
-def convert_jsonl_to_parquet(
-    jsonl_path: str,
-    output_path: str | None = None,
-    prompt_key: str = "prompt",
-    response_key: str = "generated_solution",
-):
-    """
-    Convert a JSONL file to Parquet format for SFT training.
-
-    Args:
-        jsonl_path: Path to input JSONL file
-        output_path: Path to output parquet file (if None, uses same name with .parquet)
-        prompt_key: Key in JSONL for the prompt/input text
-        response_key: Key in JSONL for the response/solution text
-    """
-    jsonl_path = Path(jsonl_path)
-
-    if output_path is None:
-        output_path = jsonl_path.with_suffix(".parquet")
-    else:
-        output_path = Path(output_path)
-
-    # Read JSONL file
-    data = []
-    print(f"Reading {jsonl_path}...")
-    with open(jsonl_path, "r") as f:
-        for line in f:
-            try:
-                item = json.loads(line.strip())
-                data.append(item)
-            except json.JSONDecodeError as e:
-                print(f"Warning: Skipping malformed line: {e}")
+def load_jsonl_rows(path: Path) -> list[dict]:
+    rows = []
+    with open(path, "r", encoding="utf-8") as handle:
+        for line_num, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
                 continue
-
-    print(f"Loaded {len(data)} examples")
-
-    # Verify required keys exist
-    if data:
-        first_item = data[0]
-        if prompt_key not in first_item:
-            raise ValueError(f"Key '{prompt_key}' not found in JSONL. Available keys: {list(first_item.keys())}")
-        if response_key not in first_item:
-            raise ValueError(f"Key '{response_key}' not found in JSONL. Available keys: {list(first_item.keys())}")
-
-    # Create DataFrame
-    df = pd.DataFrame(data)
-
-    # Save as parquet
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(output_path, index=False)
-    print(f"Saved {len(df)} examples to {output_path}")
-
-    # Print sample
-    if len(df) > 0:
-        print("\nSample entry:")
-        print(f"Prompt: {df[prompt_key].iloc[0][:100]}...")
-        print(f"Response: {df[response_key].iloc[0][:100]}...")
+            try:
+                rows.append(json.loads(stripped))
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Malformed JSON on line {line_num} in {path}: {exc}") from exc
+    return rows
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Convert JSONL to Parquet for SFT training")
-    parser.add_argument("jsonl_path", type=str, help="Path to input JSONL file")
-    parser.add_argument("-o", "--output", type=str, help="Path to output parquet file")
-    parser.add_argument("--prompt-key", type=str, default="prompt", help="Key for prompt in JSONL")
-    parser.add_argument("--response-key", type=str, default="generated_solution", help="Key for response in JSONL")
+def validate_schema(rows: list[dict], prompt_key: str, response_key: str) -> None:
+    if not rows:
+        raise ValueError("Input JSONL contains no rows.")
+
+    sample = rows[0]
+    missing = [key for key in (prompt_key, response_key) if key not in sample]
+    if missing:
+        raise ValueError(
+            f"Input rows are missing required keys {missing}. "
+            f"Available keys in first row: {list(sample.keys())}"
+        )
+
+
+def split_dataframe(
+    df: pd.DataFrame,
+    val_ratio: float,
+    shuffle: bool,
+    seed: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if shuffle:
+        df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+
+    val_size = int(len(df) * val_ratio)
+    val_df = df.iloc[:val_size].reset_index(drop=True)
+    train_df = df.iloc[val_size:].reset_index(drop=True)
+    return train_df, val_df
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Convert correct-teacher JSONL to train.parquet and val.parquet"
+    )
+    parser.add_argument(
+        "--input",
+        required=True,
+        help="Input correct-teacher JSONL file",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="data/sft",
+        help="Output directory for train.parquet and val.parquet",
+    )
+    parser.add_argument(
+        "--val-ratio",
+        type=float,
+        default=0.1,
+        help="Validation split ratio (default: 0.1)",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="Shuffle seed")
+    parser.add_argument(
+        "--no-shuffle",
+        action="store_true",
+        help="Disable row shuffling before split",
+    )
+    parser.add_argument(
+        "--prompt-key",
+        default="prompt",
+        help="Prompt field key in JSONL",
+    )
+    parser.add_argument(
+        "--response-key",
+        default="generated_solution",
+        help="Response field key in JSONL",
+    )
 
     args = parser.parse_args()
 
-    convert_jsonl_to_parquet(
-        jsonl_path=args.jsonl_path,
-        output_path=args.output,
-        prompt_key=args.prompt_key,
-        response_key=args.response_key,
+    if not 0 <= args.val_ratio < 1:
+        raise ValueError("--val-ratio must be in [0, 1).")
+
+    input_path = Path(args.input)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    rows = load_jsonl_rows(input_path)
+    validate_schema(rows, prompt_key=args.prompt_key, response_key=args.response_key)
+
+    df = pd.DataFrame(rows)
+    train_df, val_df = split_dataframe(
+        df=df,
+        val_ratio=args.val_ratio,
+        shuffle=not args.no_shuffle,
+        seed=args.seed,
     )
+
+    train_path = output_dir / "train.parquet"
+    val_path = output_dir / "val.parquet"
+
+    train_df.to_parquet(train_path, index=False)
+    val_df.to_parquet(val_path, index=False)
+
+    print(f"Loaded rows: {len(df)}")
+    print(f"Train rows: {len(train_df)} -> {train_path}")
+    print(f"Val rows:   {len(val_df)} -> {val_path}")
+    print(f"Row conservation check: {len(train_df) + len(val_df)} == {len(df)}")
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

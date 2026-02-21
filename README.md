@@ -65,7 +65,7 @@ Defaults:
 - Validation split: `0.1`
 - Shuffle: enabled
 - Seed: `42`
-- Output files: `data/sft/train.parquet` and `data/sft/val.parquet`
+- Output files: `data/sft/train.parquet` and `data/sift/val.parquet`
 
 Input JSONL must include:
 - `prompt`

@@ -94,4 +94,14 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     "trainer.logger=$LOGGER_LIST" \
     "$@"
 
+# Rename verl's global_step_N checkpoint dirs to {model_slug}_{checkpoint_num}
+echo "Renaming checkpoints to ${MODEL_SLUG}_{checkpoint_num} format..."
+epoch=1
+while IFS= read -r dir; do
+    target="${OUTPUT_DIR}/${MODEL_SLUG}_${epoch}"
+    echo "  $(basename "$dir") -> $(basename "$target")"
+    mv "$dir" "$target"
+    epoch=$((epoch + 1))
+done < <(find "$OUTPUT_DIR" -maxdepth 1 -type d -name "global_step_*" | sort -V)
+
 echo "Training complete. Checkpoints saved to: $OUTPUT_DIR"

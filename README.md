@@ -23,7 +23,7 @@ Install project dependencies with your preferred environment manager, e.g. `uv`.
 
 ## 1) Run MATH inference + evaluation
 
-on Mult-iGPU, must set env variable: 
+On multi-GPU, set this env variable first:
 
 `export VLLM_WORKER_MULTIPROC_METHOD=spawn`
 
@@ -84,7 +84,7 @@ bash scripts/run_sft_training.sh
 
 Behavior:
 - plain verl FSDP SFT
-- console + wandb logging
+- console logging by default; set `WANDB_ENABLED=true` to also log to wandb
 - checkpoint frequency = every epoch
 - checkpoint content = `hf_model` only
 
@@ -96,8 +96,8 @@ Behavior:
 - `--subset`: MATH subset (default `all`)
 - `--max-samples`: optional cap
 - `--max-tokens`: generation max new tokens
+- `--gpu-memory-utilization`: fraction of GPU memory vLLM may use (default `0.95`)
 - `--save-correct-jsonl`: optional correct-only export
-- `--batch-size`: batch size
 
 ### `scripts/convert_jsonl_to_parquet.py`
 - `--input` (required)
@@ -111,3 +111,5 @@ Environment-configurable values include:
 - `MODEL_NAME`, `TRAIN_FILE`, `VAL_FILE`, `OUTPUT_DIR`
 - `NPROC_PER_NODE`, `BATCH_SIZE`, `TRAIN_BATCH_SIZE`
 - `LEARNING_RATE`, `EPOCHS`, `MAX_LENGTH`
+- `GRAD_ACCUM_STEPS`: gradient accumulation steps (default `1`); multiplied into `TRAIN_BATCH_SIZE` to simulate a larger effective batch
+- `WANDB_ENABLED`: set to `true` to enable wandb logging (default `false`)

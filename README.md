@@ -29,7 +29,7 @@ On multi-GPU, set this env variable first:
 
 ```bash
 python scripts/run_local_pipeline.py \
-  --model "Qwen/Qwen2.5-Math-7B-Instruct" \
+  --model "Qwen/Qwen2.5-Math-1.5B" \
   --split test \
   --subset all \
   --max-tokens 16384
@@ -39,7 +39,7 @@ Optional correct-only export:
 
 ```bash
 python scripts/run_local_pipeline.py \
-  --model "Qwen/Qwen2.5-Math-7B-Instruct" \
+  --model "Qwen/Qwen2.5-Math-1.5B" \
   --split train \
   --save-correct-jsonl
 ```

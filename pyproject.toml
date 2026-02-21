@@ -29,6 +29,3 @@ build-backend = "hatchling.build"
 # Configure uv-specific settings
 dev-dependencies = []
 
-[tool.uv.sources]
-# Use auto torch backend detection
-vllm = { index = "pypi" }

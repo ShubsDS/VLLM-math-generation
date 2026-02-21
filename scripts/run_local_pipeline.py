@@ -332,7 +332,7 @@ def run_inference(
     max_model_len: int,
     temperature: float,
     top_p: float,
-    batch_size: int,
+    gpu_memory_utilization: float,
 ) -> list[dict]:
     from vllm import LLM, SamplingParams
 
@@ -342,7 +342,7 @@ def run_inference(
         model=model_name,
         tensor_parallel_size=tensor_parallel_size,
         max_model_len=max_model_len,
-        gpu_memory_utilization=0.95,
+        gpu_memory_utilization=gpu_memory_utilization,
         dtype="bfloat16",
     )
 
@@ -353,20 +353,15 @@ def run_inference(
         skip_special_tokens=True,
     )
 
+    outputs = llm.generate(prompts, sampling_params)
     rows = []
-    for start_idx in range(0, len(prompts), batch_size):
-        batch_prompts = prompts[start_idx : start_idx + batch_size]
-        batch_outputs = llm.generate(batch_prompts, sampling_params)
-        for offset, output in enumerate(batch_outputs):
-            prompt_idx = start_idx + offset
-            rows.append(
-                {
-                    "id": prompt_idx,
-                    "prompt": batch_prompts[offset],
-                    "generated_solution": output.outputs[0].text,
-                    "num_tokens": len(output.outputs[0].token_ids),
-                }
-            )
+    for idx, output in enumerate(outputs):
+        rows.append({
+            "id": idx,
+            "prompt": prompts[idx],
+            "generated_solution": output.outputs[0].text,
+            "num_tokens": len(output.outputs[0].token_ids),
+        })
 
     return rows
 
@@ -403,7 +398,12 @@ def main() -> int:
     parser.add_argument("--max-model-len", type=int, default=16384, help="vLLM max context length")
     parser.add_argument("--temperature", type=float, default=0.0, help="Sampling temperature")
     parser.add_argument("--top-p", type=float, default=1.0, help="Top-p sampling")
-    parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
+    parser.add_argument(
+        "--gpu-memory-utilization",
+        type=float,
+        default=0.95,
+        help="Fraction of GPU memory vLLM may use (default: 0.95)",
+    )
 
     args = parser.parse_args()
 
@@ -442,7 +442,7 @@ def main() -> int:
         max_model_len=args.max_model_len,
         temperature=args.temperature,
         top_p=args.top_p,
-        batch_size=args.batch_size,
+        gpu_memory_utilization=args.gpu_memory_utilization,
     )
 
     output_path = Path(args.output_dir) / f"{model_slug}_{args.split}_{timestamp}.jsonl"

@@ -13,6 +13,7 @@ dependencies = [
     "tqdm>=4.66.0",
     "jsonlines>=4.0.0",
     "python-dotenv>=1.0.0",
+    "math-verify>=0.7.0",
 ]
 
 [project.optional-dependencies]

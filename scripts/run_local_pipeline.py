@@ -155,55 +155,41 @@ def prepare_examples(split: str, subset: str, max_samples: int | None):
     return examples, source_id
 
 
-def extract_answer(solution_text: str) -> str:
-    if not solution_text or not solution_text.strip():
-        return ""
-
-    boxed_match = re.search(r"\\boxed\{([^}]+)\}", solution_text)
-    if boxed_match:
-        return boxed_match.group(1).strip()
-
-    answer_match = re.search(
-        r"(?:answer|result|solution) is:?\s*([^\n.]+)", solution_text, re.IGNORECASE
-    )
-    if answer_match:
-        return answer_match.group(1).strip()
-
-    lines = solution_text.strip().split("\n")
-    last_line = lines[-1].strip()
-    last_line = re.sub(
-        r"^(?:Therefore|Thus|So|Hence),?\s*", "", last_line, flags=re.IGNORECASE
-    )
-    return last_line
-
-
-def normalize_answer(answer: str) -> str:
-    if not answer:
-        return ""
-    answer = answer.strip()
-    answer = re.sub(r"\$", "", answer)
-    answer = re.sub(r"\\text\{([^}]+)\}", r"\1", answer)
-    answer = re.sub(r"\\mathrm\{([^}]+)\}", r"\1", answer)
-    answer = re.sub(r"\\frac\{([^}]+)\}\{([^}]+)\}", r"\1/\2", answer)
-    answer = re.sub(r"\\", "", answer)
-    answer = re.sub(r"\s+", " ", answer)
-    return answer.lower().strip()
+def _extract_boxed_str(text: str) -> str:
+    """Extract the last \\boxed{} content using brace counting. Display only."""
+    idx = text.rfind("\\boxed")
+    if idx < 0:
+        return text.strip()
+    i = idx
+    depth = 0
+    start = None
+    while i < len(text):
+        if text[i] == "{":
+            depth += 1
+            if depth == 1:
+                start = i + 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0 and start is not None:
+                return text[start:i].strip()
+        i += 1
+    return text.strip()
 
 
-def compare_answers(generated: str, ground_truth: str) -> tuple[bool, str]:
-    if not generated or not ground_truth:
-        return False, "no_answer"
+def compare_answers(generated_solution: str, ground_truth_solution: str) -> tuple[bool, str]:
+    from math_verify import parse, verify, LatexExtractionConfig, ExprExtractionConfig
 
-    gen_norm = normalize_answer(generated)
-    truth_norm = normalize_answer(ground_truth)
+    extraction_config = [
+        LatexExtractionConfig(boxed_match_priority=0),
+        ExprExtractionConfig(),
+    ]
+    gold = parse(ground_truth_solution, extraction_config=extraction_config)
+    pred = parse(generated_solution, extraction_config=extraction_config)
 
-    if gen_norm == truth_norm:
-        return True, "exact"
+    if not gold or not pred:
+        return False, "parse_failure"
 
-    if (truth_norm in gen_norm) or (gen_norm in truth_norm):
-        return True, "substring"
-
-    return False, "no_match"
+    return bool(verify(gold, pred)), "sympy_equiv"
 
 
 def evaluate_outputs(outputs: list[dict], examples: list[dict]) -> tuple[list[dict], dict]:
@@ -216,9 +202,11 @@ def evaluate_outputs(outputs: list[dict], examples: list[dict]) -> tuple[list[di
         if example is None:
             continue
 
-        generated_answer = extract_answer(output.get("generated_solution", ""))
-        ground_truth_answer = extract_answer(example.get("solution", ""))
-        is_correct, match_type = compare_answers(generated_answer, ground_truth_answer)
+        generated_solution = output.get("generated_solution", "")
+        ground_truth_solution = example.get("solution", "")
+        is_correct, match_type = compare_answers(generated_solution, ground_truth_solution)
+        generated_answer = _extract_boxed_str(generated_solution)
+        ground_truth_answer = _extract_boxed_str(ground_truth_solution)
 
         results.append(
             {

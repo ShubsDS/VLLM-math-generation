@@ -15,7 +15,9 @@ MAX_LENGTH=${MAX_LENGTH:-16384}
 PROJECT_NAME=${PROJECT_NAME:-"math-sft"}
 EXPERIMENT_NAME=${EXPERIMENT_NAME:-"math-sft-$(date +%Y%m%d_%H%M%S)"}
 ATTN_IMPL=${ATTN_IMPL:-"sdpa"}
-TRAIN_BATCH_SIZE=${TRAIN_BATCH_SIZE:-$((BATCH_SIZE * NPROC_PER_NODE))}
+GRAD_ACCUM_STEPS=${GRAD_ACCUM_STEPS:-1}
+WANDB_ENABLED=${WANDB_ENABLED:-false}
+TRAIN_BATCH_SIZE=${TRAIN_BATCH_SIZE:-$((BATCH_SIZE * NPROC_PER_NODE * GRAD_ACCUM_STEPS))}
 
 if [ ! -f "$TRAIN_FILE" ]; then
     echo "Error: train file does not exist: $TRAIN_FILE"
@@ -29,16 +31,22 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
-STEPS_PER_EPOCH=$(python3 - <<PY
-import math
+STEPS_PER_EPOCH=$(TRAIN_FILE="$TRAIN_FILE" TRAIN_BATCH_SIZE="$TRAIN_BATCH_SIZE" uv run python3 - << 'PY'
+import math, os
 import pandas as pd
-rows = len(pd.read_parquet("$TRAIN_FILE"))
-batch = int("$TRAIN_BATCH_SIZE")
+rows = len(pd.read_parquet(os.environ["TRAIN_FILE"]))
+batch = int(os.environ["TRAIN_BATCH_SIZE"])
 print(max(1, math.ceil(rows / batch)))
 PY
 )
 
 SAVE_FREQ=$STEPS_PER_EPOCH
+
+if [ "$WANDB_ENABLED" = "true" ]; then
+    LOGGER_LIST='["console","wandb"]'
+else
+    LOGGER_LIST='["console"]'
+fi
 
 echo "=========================================="
 echo "Minimal SFT Training Configuration"
@@ -54,10 +62,11 @@ echo "Epochs: $EPOCHS"
 echo "Max length: $MAX_LENGTH"
 echo "GPUs: $NPROC_PER_NODE"
 echo "Attention impl: $ATTN_IMPL"
+echo "Gradient accumulation steps: $GRAD_ACCUM_STEPS"
 echo "Steps per epoch: $STEPS_PER_EPOCH"
 echo "Checkpoint save frequency (steps): $SAVE_FREQ"
 echo "Checkpoint contents: [\"hf_model\"]"
-echo "Loggers: [\"console\",\"wandb\"]"
+echo "Loggers: $LOGGER_LIST"
 echo "=========================================="
 
 torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
@@ -78,7 +87,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     trainer.total_epochs=$EPOCHS \
     trainer.save_freq=$SAVE_FREQ \
     'trainer.checkpoint.save_contents=["hf_model"]' \
-    'trainer.logger=["console","wandb"]' \
+    "trainer.logger=$LOGGER_LIST" \
     "$@"
 
 echo "Training complete. Checkpoints saved to: $OUTPUT_DIR"

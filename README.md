@@ -53,7 +53,21 @@ python scripts/run_local_pipeline.py \
 - Optional correct-only JSONL:
   - `outputs/<model_slug>_<split>_<timestamp>.correct.jsonl`
 
-## 2) Convert correct JSONL to train/val parquet
+## 2) Filter correct JSONL by sequence length
+
+verl's SFT dataset raises an error if any sequence exceeds `MAX_LENGTH`. Since
+`--max-tokens` in inference caps *output* tokens only, the total sequence
+(prompt + output) can exceed the training max length. Filter first:
+
+```bash
+python scripts/filter_jsonl_by_length.py \
+  --input outputs/<correct_file>.correct.jsonl \
+  --max-tokens 16384
+```
+
+Output is written alongside the input as `<stem>.filtered16k.correct.jsonl`.
+
+## 3) Convert correct JSONL to train/val parquet
 
 ```bash
 python scripts/convert_jsonl_to_parquet.py \
@@ -71,7 +85,7 @@ Input JSONL must include:
 - `prompt`
 - `generated_solution`
 
-## 3) Run plain SFT training
+## 4) Run plain SFT training
 
 ```bash
 MODEL_NAME="./Qwen2.5-Math-1.5B" \
@@ -98,6 +112,11 @@ Behavior:
 - `--max-tokens`: generation max new tokens
 - `--gpu-memory-utilization`: fraction of GPU memory vLLM may use (default `0.95`)
 - `--save-correct-jsonl`: optional correct-only export
+
+### `scripts/filter_jsonl_by_length.py`
+- `--input` (required): correct-teacher JSONL
+- `--max-tokens` (required): drop rows where `prompt_tokens + output_tokens > N`
+- `--output` (optional): output path; defaults to `<stem>.filtered<N>k.correct.jsonl`
 
 ### `scripts/convert_jsonl_to_parquet.py`
 - `--input` (required)

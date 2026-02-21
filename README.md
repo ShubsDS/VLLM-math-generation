@@ -97,6 +97,7 @@ Behavior:
 - `--max-samples`: optional cap
 - `--max-tokens`: generation max new tokens
 - `--save-correct-jsonl`: optional correct-only export
+- `--batch-size`: batch size
 
 ### `scripts/convert_jsonl_to_parquet.py`
 - `--input` (required)

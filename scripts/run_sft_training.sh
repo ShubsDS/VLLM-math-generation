@@ -7,9 +7,11 @@ NPROC_PER_NODE=${NPROC_PER_NODE:-1}
 MODEL_NAME=${MODEL_NAME:-"./Qwen2.5-Math-1.5B"}
 TRAIN_FILE=${TRAIN_FILE:-"./data/sft/train.parquet"}
 VAL_FILE=${VAL_FILE:-"./data/sft/val.parquet"}
-OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/sft_qwen2.5_math_1.5b"}
+MODEL_SLUG=$(basename "$MODEL_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_]/_/g')
+OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/sft_${MODEL_SLUG}"}
 BATCH_SIZE=${BATCH_SIZE:-4}
 LEARNING_RATE=${LEARNING_RATE:-1e-5}
+WARMUP_STEPS=${WARMUP_STEPS:-10}
 EPOCHS=${EPOCHS:-3}
 MAX_LENGTH=${MAX_LENGTH:-16384}
 PROJECT_NAME=${PROJECT_NAME:-"math-sft"}
@@ -66,6 +68,7 @@ echo "Gradient accumulation steps: $GRAD_ACCUM_STEPS"
 echo "Steps per epoch: $STEPS_PER_EPOCH"
 echo "Checkpoint save frequency (steps): $SAVE_FREQ"
 echo "Checkpoint contents: [\"hf_model\"]"
+echo "Warmup steps: $WARMUP_STEPS"
 echo "Loggers: $LOGGER_LIST"
 echo "=========================================="
 
@@ -81,6 +84,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     model.partial_pretrain=$MODEL_NAME \
     model.attn_implementation=$ATTN_IMPL \
     optim.lr=$LEARNING_RATE \
+    optim.warmup_steps=$WARMUP_STEPS \
     trainer.default_local_dir=$OUTPUT_DIR \
     trainer.project_name=$PROJECT_NAME \
     trainer.experiment_name=$EXPERIMENT_NAME \

@@ -121,8 +121,16 @@ def load_math_split(split: str, subset: str):
     )
 
 
-def prepare_examples(split: str, subset: str, max_samples: int | None):
+def prepare_examples(
+    split: str,
+    subset: str,
+    max_samples: int | None,
+    shuffle: bool = False,
+    seed: int = 42,
+):
     dataset, source_id = load_math_split(split=split, subset=subset)
+    if shuffle:
+        dataset = dataset.shuffle(seed=seed)
     if max_samples is not None:
         dataset = dataset.select(range(min(max_samples, len(dataset))))
 
@@ -182,6 +190,7 @@ def compare_answers(generated_solution: str, ground_truth_solution: str) -> tupl
 def evaluate_outputs(outputs: list[dict], examples: list[dict]) -> tuple[list[dict], dict]:
     by_id = {example["id"]: example for example in examples}
     results = []
+    parse_failures = 0
 
     for output in outputs:
         problem_id = output["id"]
@@ -192,44 +201,65 @@ def evaluate_outputs(outputs: list[dict], examples: list[dict]) -> tuple[list[di
         generated_solution = output.get("generated_solution", "")
         ground_truth_solution = example.get("solution", "")
         is_correct, match_type = compare_answers(generated_solution, ground_truth_solution)
+        if match_type == "parse_failure":
+            parse_failures += 1
         generated_answer = _extract_boxed_str(generated_solution)
         ground_truth_answer = _extract_boxed_str(ground_truth_solution)
 
         results.append(
             {
                 "id": problem_id,
+                "sample_idx": output.get("sample_idx", 0),
                 "level": example.get("level", "Unknown"),
                 "type": example.get("type", "Unknown"),
                 "is_correct": is_correct,
                 "match_type": match_type,
                 "generated_answer": generated_answer,
                 "ground_truth_answer": ground_truth_answer,
-                "num_tokens": output.get("num_tokens", 0),
+                "output_tokens": output.get("output_tokens", 0),
+                "prompt_tokens": output.get("prompt_tokens", 0),
             }
         )
 
-    total = len(results)
-    correct = sum(1 for r in results if r["is_correct"])
+    # Any-correct deduplication: a problem counts as correct if any sample is correct.
+    any_correct: dict[int, bool] = {}
+    any_level: dict[int, str] = {}
+    any_type: dict[int, str] = {}
+    for row in results:
+        pid = row["id"]
+        if pid not in any_correct:
+            any_correct[pid] = row["is_correct"]
+            any_level[pid] = row["level"]
+            any_type[pid] = row["type"]
+        elif row["is_correct"]:
+            any_correct[pid] = True
+
+    total = len(any_correct)
+    correct = sum(1 for v in any_correct.values() if v)
     accuracy = correct / total if total else 0.0
 
     by_level = defaultdict(lambda: {"correct": 0, "total": 0})
     by_type = defaultdict(lambda: {"correct": 0, "total": 0})
 
-    for row in results:
-        lvl = row["level"]
-        typ = row["type"]
+    for pid, is_correct in any_correct.items():
+        lvl = any_level[pid]
+        typ = any_type[pid]
         by_level[lvl]["total"] += 1
         by_type[typ]["total"] += 1
-        if row["is_correct"]:
+        if is_correct:
             by_level[lvl]["correct"] += 1
             by_type[typ]["correct"] += 1
 
+    total_samples = len(results)
     metrics = {
         "overall": {
             "accuracy": accuracy,
             "correct": correct,
             "total": total,
-            "avg_tokens": sum(r.get("num_tokens", 0) for r in results) / total if total else 0.0,
+            "total_samples": total_samples,
+            "parse_failures": parse_failures,
+            "avg_output_tokens": sum(r["output_tokens"] for r in results) / total_samples if total_samples else 0.0,
+            "avg_prompt_tokens": sum(r["prompt_tokens"] for r in results) / total_samples if total_samples else 0.0,
         },
         "by_level": {
             key: {
@@ -264,6 +294,9 @@ def write_markdown_report(
     by_level = metrics["by_level"]
     by_type = metrics["by_type"]
 
+    total_samples = overall.get("total_samples", overall["total"])
+    parse_pct = overall["parse_failures"] / total_samples if total_samples else 0.0
+
     lines = [
         "# MATH Evaluation Report\n",
         f"- Model: `{model_name}`\n",
@@ -275,7 +308,9 @@ def write_markdown_report(
         "## Overall\n",
         f"- Accuracy: **{overall['accuracy']:.2%}**\n",
         f"- Correct: **{overall['correct']} / {overall['total']}**\n",
-        f"- Avg tokens: **{overall['avg_tokens']:.1f}**\n",
+        f"- Avg output tokens: **{overall['avg_output_tokens']:.1f}**\n",
+        f"- Avg prompt tokens: **{overall['avg_prompt_tokens']:.1f}**\n",
+        f"- Parse Failures: **{overall['parse_failures']}** ({parse_pct:.2%})\n",
         "\n",
     ]
 
@@ -320,6 +355,7 @@ def run_inference(
     temperature: float,
     top_p: float,
     gpu_memory_utilization: float,
+    num_samples: int = 1,
 ) -> list[dict]:
     from vllm import LLM, SamplingParams
 
@@ -338,17 +374,26 @@ def run_inference(
         top_p=top_p,
         max_tokens=max_tokens,
         skip_special_tokens=True,
+        n=num_samples,
     )
 
     outputs = llm.generate(prompts, sampling_params)
     rows = []
     for idx, output in enumerate(outputs):
-        rows.append({
-            "id": idx,
-            "prompt": prompts[idx],
-            "generated_solution": output.outputs[0].text,
-            "num_tokens": len(output.outputs[0].token_ids),
-        })
+        ex = examples[idx]
+        for sample_idx, gen in enumerate(output.outputs):
+            rows.append({
+                "id": ex["id"],
+                "problem": ex["problem"],
+                "solution": ex["solution"],
+                "level": ex["level"],
+                "type": ex["type"],
+                "prompt": ex["prompt"],
+                "generated_solution": gen.text,
+                "sample_idx": sample_idx,
+                "prompt_tokens": len(output.prompt_token_ids),
+                "output_tokens": len(gen.token_ids),
+            })
 
     return rows
 
@@ -368,6 +413,9 @@ def main() -> int:
     parser.add_argument("--split", default="test", choices=["train", "test"], help="MATH split")
     parser.add_argument("--subset", default="all", help="MATH subject subset, e.g. algebra or all")
     parser.add_argument("--max-samples", type=int, default=None, help="Optional sample cap")
+    parser.add_argument("--shuffle", action="store_true", help="Shuffle dataset before applying --max-samples")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for --shuffle")
+    parser.add_argument("--num-samples", type=int, default=1, help="Number of generations per problem")
     parser.add_argument("--output-dir", default="outputs", help="Directory for full generations")
     parser.add_argument("--eval-dir", default="eval_results", help="Directory for markdown report")
     parser.add_argument(
@@ -412,12 +460,16 @@ def main() -> int:
     print(f"Model: {model_name}")
     print(f"Split/subset: {args.split}/{args.subset}")
     print(f"Max samples: {args.max_samples}")
+    print(f"Shuffle: {args.shuffle} (seed={args.seed})")
+    print(f"Num samples per problem: {args.num_samples}")
     print(f"Tensor parallel size: {tp_size} (visible GPUs: {num_gpus})")
 
     examples, dataset_source = prepare_examples(
         split=args.split,
         subset=args.subset,
         max_samples=args.max_samples,
+        shuffle=args.shuffle,
+        seed=args.seed,
     )
     print(f"Loaded {len(examples)} examples from {dataset_source}")
 
@@ -430,6 +482,7 @@ def main() -> int:
         temperature=args.temperature,
         top_p=args.top_p,
         gpu_memory_utilization=args.gpu_memory_utilization,
+        num_samples=args.num_samples,
     )
 
     output_path = Path(args.output_dir) / f"{model_slug}_{args.split}_{timestamp}.jsonl"

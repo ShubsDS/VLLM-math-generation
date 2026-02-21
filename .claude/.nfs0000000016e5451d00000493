@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python scripts/load_math_dataset.py:*)"
-    ]
-  }
-}

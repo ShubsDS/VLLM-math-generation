@@ -23,6 +23,10 @@ Install project dependencies with your preferred environment manager, e.g. `uv`.
 
 ## 1) Run MATH inference + evaluation
 
+on Mult-iGPU, must set env variable: 
+
+`export VLLM_WORKER_MULTIPROC_METHOD=spawn`
+
 ```bash
 python scripts/run_local_pipeline.py \
   --model "Qwen/Qwen2.5-Math-7B-Instruct" \

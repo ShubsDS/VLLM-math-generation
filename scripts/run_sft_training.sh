@@ -33,7 +33,7 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
-STEPS_PER_EPOCH=$(TRAIN_FILE="$TRAIN_FILE" TRAIN_BATCH_SIZE="$TRAIN_BATCH_SIZE" uv run python3 - << 'PY'
+STEPS_PER_EPOCH=$(TRAIN_FILE="$TRAIN_FILE" TRAIN_BATCH_SIZE="$TRAIN_BATCH_SIZE" uv run --no-project python3 - << 'PY'
 import math, os
 import pandas as pd
 rows = len(pd.read_parquet(os.environ["TRAIN_FILE"]))

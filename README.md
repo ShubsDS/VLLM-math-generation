@@ -62,10 +62,15 @@ verl's SFT dataset raises an error if any sequence exceeds `MAX_LENGTH`. Since
 ```bash
 python scripts/filter_jsonl_by_length.py \
   --input outputs/<correct_file>.correct.jsonl \
-  --max-tokens 16384
+  --max-tokens 16000
 ```
 
 Output is written alongside the input as `<stem>.filtered16k.correct.jsonl`.
+
+> **Note:** use a threshold somewhat below your training `MAX_LENGTH` (e.g. 16000 for
+> a 16384 limit). Token counts in the JSONL are from the inference tokenizer; verl
+> re-tokenizes at training time and may produce slightly higher counts due to BPE
+> boundary effects at the prompt/response join and added special tokens (EOS etc.).
 
 ## 3) Convert correct JSONL to train/val parquet
 

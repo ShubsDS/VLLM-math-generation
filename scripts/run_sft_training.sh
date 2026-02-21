@@ -84,7 +84,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$NPROC_PER_NODE \
     model.partial_pretrain=$MODEL_NAME \
     model.attn_implementation=$ATTN_IMPL \
     optim.lr=$LEARNING_RATE \
-    optim.warmup_steps=$WARMUP_STEPS \
+    +optim.warmup_steps=$WARMUP_STEPS \
     trainer.default_local_dir=$OUTPUT_DIR \
     trainer.project_name=$PROJECT_NAME \
     trainer.experiment_name=$EXPERIMENT_NAME \

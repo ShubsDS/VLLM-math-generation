@@ -33,19 +33,6 @@ def format_math_prompt(problem: str) -> str:
     )
 
 
-def resolve_model_name(model_name: str) -> str:
-    deprecated_aliases = {
-        "Qwen/Qwen2.5-Math-14B-Instruct": "Qwen/Qwen2.5-Math-7B-Instruct",
-    }
-    if model_name in deprecated_aliases:
-        replacement = deprecated_aliases[model_name]
-        print(
-            f"Model '{model_name}' is unavailable on Hugging Face. Using '{replacement}' instead."
-        )
-        return replacement
-    return model_name
-
-
 def validate_transformers_compatibility() -> None:
     import transformers
 
@@ -413,7 +400,7 @@ def main() -> int:
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required for this pipeline.")
 
-    model_name = resolve_model_name(args.model)
+    model_name = args.model
     model_slug = slugify(model_name)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 

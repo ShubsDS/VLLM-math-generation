@@ -102,7 +102,7 @@ python3 -m verl.trainer.main_ppo \
     data.train_batch_size=${train_prompt_bsz} \
     actor_rollout_ref.model.path="${CHECKPOINT_PATH}" \
     actor_rollout_ref.model.use_remove_padding=True \
-    actor_rollout_ref.model.enable_gradient_checkpointing=False \
+    actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.rollout.n=${n_resp_per_prompt} \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \

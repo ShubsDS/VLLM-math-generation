@@ -48,7 +48,7 @@ OUTPUT_DIR="${OUTPUT_BASE_DIR}/${EXP_NAME}"
 
 # ── Hyperparameters ────────────────────────────────────────────────────────────
 max_prompt_length=2048
-max_response_length=8192
+max_response_length=16384
 overlong_buffer_len=4096
 train_prompt_bsz=32
 n_resp_per_prompt=8

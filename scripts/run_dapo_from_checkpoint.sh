@@ -53,8 +53,8 @@ overlong_buffer_len=4096
 train_prompt_bsz=32
 n_resp_per_prompt=8
 train_prompt_mini_bsz=16
-actor_ppo_max_token_len=$(( (max_prompt_length + max_response_length) * 2 ))
-infer_ppo_max_token_len=$(( (max_prompt_length + max_response_length) * 3 ))
+actor_ppo_max_token_len=$(( (max_prompt_length + max_response_length) * 4 ))
+infer_ppo_max_token_len=$(( (max_prompt_length + max_response_length) * 6 ))
 
 # ── Validation ─────────────────────────────────────────────────────────────────
 if [ ! -f "${TRAIN_FILE}" ]; then
@@ -102,11 +102,11 @@ python3 -m verl.trainer.main_ppo \
     data.train_batch_size=${train_prompt_bsz} \
     actor_rollout_ref.model.path="${CHECKPOINT_PATH}" \
     actor_rollout_ref.model.use_remove_padding=True \
-    actor_rollout_ref.model.enable_gradient_checkpointing=True \
+    actor_rollout_ref.model.enable_gradient_checkpointing=False \
     actor_rollout_ref.rollout.n=${n_resp_per_prompt} \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
-    actor_rollout_ref.rollout.gpu_memory_utilization=0.4 \
+    actor_rollout_ref.rollout.gpu_memory_utilization=0.8 \
     actor_rollout_ref.rollout.temperature=1.0 \
     actor_rollout_ref.rollout.top_p=1.0 \
     actor_rollout_ref.rollout.top_k=-1 \
@@ -133,9 +133,9 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.actor.grad_clip=1.0 \
     actor_rollout_ref.actor.use_kl_loss=False \
     actor_rollout_ref.actor.kl_loss_coef=0.0 \
-    actor_rollout_ref.actor.fsdp_config.param_offload=True \
-    actor_rollout_ref.actor.fsdp_config.optimizer_offload=True \
-    actor_rollout_ref.ref.fsdp_config.param_offload=True \
+    actor_rollout_ref.actor.fsdp_config.param_offload=False \
+    actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
+    actor_rollout_ref.ref.fsdp_config.param_offload=False \
     actor_rollout_ref.ref.log_prob_use_dynamic_bsz=True \
     actor_rollout_ref.ref.log_prob_max_token_len_per_gpu=${infer_ppo_max_token_len} \
     algorithm.adv_estimator=grpo \

@@ -1,6 +1,6 @@
 # VLLM MATH Generation (Minimal)
 
-This repository contains three experiment pipelines:
+This repository contains four experiment pipelines:
 
 1. `scripts/run_local_pipeline.py`
    - MATH-only inference + evaluation in one command.
@@ -15,6 +15,11 @@ This repository contains three experiment pipelines:
 3. Trajectory length analysis
    - `scripts/measure_avg_trajectory_length.py`: module + CLI for measuring output-token statistics on a single checkpoint.
    - `scripts/sweep_trajectory_lengths.py`: sweeps every checkpoint in a directory, producing per-checkpoint histograms and a mean-trajectory plot.
+
+4. DAPO training sweep
+   - `scripts/prepare_dapo_data.sh`: download DAPO-MATH-17K and AIME-2024 datasets.
+   - `scripts/run_dapo_from_checkpoint.sh`: run one DAPO job from a single SFT checkpoint.
+   - `scripts/sweep_dapo_checkpoints.sh`: iterate over a list of SFT epoch checkpoints and run DAPO from each, producing comparable W&B runs in a shared project.
 
 ## Requirements
 
@@ -154,6 +159,90 @@ Checkpoints must follow the `{model_name}_{N}` naming convention produced by
 | `<image-dir>/mean_trajectory_length.png` | Mean tokens vs. checkpoint number |
 | stdout | Summary table: N, mean, std, min, p50, p95, max per checkpoint |
 
+## 6) DAPO training sweep across SFT checkpoints
+
+DAPO (Decoupled Clip and Dynamic Sampling Policy Optimization) is used here to
+continue training from SFT checkpoints, with each checkpoint producing a separate
+W&B run so that training reward curves and AIME-2024 accuracy can be overlaid and
+compared.
+
+### Step 1 — Download data
+
+```bash
+bash scripts/prepare_dapo_data.sh
+```
+
+Downloads to `data/dapo/`:
+- `dapo-math-17k.parquet` — DAPO-MATH-17K training prompts
+- `aime-2024.parquet` — AIME-2024 validation set
+
+Skips files that already exist.
+
+### Step 2 — Run DAPO from a single checkpoint
+
+```bash
+CHECKPOINT_PATH=/bigtemp/fvc9ch/checkpoints/sft_qwen2_5_math_1_5b/qwen2_5_math_1_5b_10/huggingface \
+bash scripts/run_dapo_from_checkpoint.sh
+```
+
+All settings have defaults. Key env vars:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CHECKPOINT_PATH` | *(required)* | Path to HF checkpoint directory |
+| `CHECKPOINT_NAME` | `basename CHECKPOINT_PATH` | Label used in W&B run name |
+| `WANDB_PROJECT` | `dapo-sft-sweep` | Shared W&B project for all runs |
+| `NPROC_PER_NODE` | `2` | Number of GPUs |
+| `TOTAL_STEPS` | `200` | Max training steps |
+| `TRAIN_FILE` | `data/dapo/dapo-math-17k.parquet` | Training data |
+| `TEST_FILE` | `data/dapo/aime-2024.parquet` | Eval data |
+| `OUTPUT_BASE_DIR` | `/bigtemp/fvc9ch/checkpoints` | Root for checkpoint output |
+
+Each run is saved to `${OUTPUT_BASE_DIR}/dapo_from_${CHECKPOINT_NAME}/` and logged
+to W&B as `dapo_from_${CHECKPOINT_NAME}` within the shared project.
+
+Smoke test (5 steps):
+
+```bash
+TOTAL_STEPS=5 NPROC_PER_NODE=2 \
+CHECKPOINT_PATH=/bigtemp/fvc9ch/checkpoints/sft_qwen2_5_math_1_5b/qwen2_5_math_1_5b_10/huggingface \
+bash scripts/run_dapo_from_checkpoint.sh
+```
+
+### Step 3 — Sweep multiple checkpoints
+
+Pass epoch numbers as positional arguments; the script constructs the checkpoint
+path automatically from the standard `sft_qwen2_5_math_1_5b` directory:
+
+```bash
+bash scripts/sweep_dapo_checkpoints.sh 1 5 10
+```
+
+Runs are sequential to avoid GPU contention. Optional env vars (`WANDB_PROJECT`,
+`NPROC_PER_NODE`, `TOTAL_STEPS`, etc.) are forwarded to the inner script:
+
+```bash
+WANDB_PROJECT=my-project TOTAL_STEPS=300 \
+bash scripts/sweep_dapo_checkpoints.sh 1 3 5 7 10
+```
+
+### Algorithm details
+
+- **Advantage estimator**: GRPO
+- **Clip ratios**: `low=0.2`, `high=0.28`, `c=10.0` (DAPO decoupled clip)
+- **Loss aggregation**: `token-mean`
+- **KL**: disabled in both reward and loss
+- **Overlong buffer**: enabled (length=4096, penalty\_factor=1.0)
+- **Rollout**: vLLM, `n=8` responses per prompt, `gpu_memory_utilization=0.4`
+- **Actor**: full fine-tuning with FSDP param + optimizer offloading; no LoRA
+- **Eval**: `val_before_train=True`, every 10 steps on AIME-2024, 5 generations logged
+
+### W&B comparison
+
+All runs land in the same project. Because the experiment name encodes the SFT
+epoch, the W&B compare view lets you overlay `val/test_score/mean` (AIME-2024
+accuracy) and `train/reward` across checkpoints on the same step axis.
+
 ## Key CLI references
 
 ### `scripts/run_local_pipeline.py`
@@ -205,3 +294,16 @@ Environment-configurable values include:
 - `--gpu-memory-utilization` (default `0.95`)
 - `--tensor-parallel-size` (default `1`)
 - `--seed` (default `42`)
+
+### `scripts/prepare_dapo_data.sh`
+No arguments. Downloads `data/dapo/dapo-math-17k.parquet` and
+`data/dapo/aime-2024.parquet`; skips files that already exist.
+
+### `scripts/run_dapo_from_checkpoint.sh`
+Configured entirely via environment variables (see table in section 6 above).
+`CHECKPOINT_PATH` is the only required variable.
+
+### `scripts/sweep_dapo_checkpoints.sh`
+- Positional args: epoch numbers (e.g. `1 5 10`)
+- Optional env vars forwarded: `WANDB_PROJECT`, `NPROC_PER_NODE`, `TOTAL_STEPS`,
+  `TRAIN_FILE`, `TEST_FILE`, `OUTPUT_BASE_DIR`

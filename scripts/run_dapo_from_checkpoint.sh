@@ -92,7 +92,8 @@ echo "=========================================="
 # Run from the verl repo root so Hydra resolves its config path correctly.
 cd "${VERL_DIR}"
 
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export PYTORCH_ALLOC_CONF=expandable_segments:True
+export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=1800  # default 120s; extended to survive slow FSDP checkpoint saves
 
 python3 -m verl.trainer.main_ppo \
     data.train_files="${TRAIN_FILE}" \

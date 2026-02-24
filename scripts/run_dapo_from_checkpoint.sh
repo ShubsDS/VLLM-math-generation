@@ -116,6 +116,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.enable_chunked_prefill=True \
     actor_rollout_ref.rollout.max_num_batched_tokens=$(( max_prompt_length + max_response_length )) \
     actor_rollout_ref.rollout.log_prob_use_dynamic_bsz=False \
+    actor_rollout_ref.rollout.log_prob_micro_batch_size=$(( train_prompt_bsz * n_resp_per_prompt / 16 )) \
     actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu=${infer_ppo_max_token_len} \
     actor_rollout_ref.rollout.val_kwargs.temperature=1.0 \
     actor_rollout_ref.rollout.val_kwargs.top_p=0.7 \
@@ -140,6 +141,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
     actor_rollout_ref.ref.fsdp_config.param_offload=False \
     actor_rollout_ref.ref.log_prob_use_dynamic_bsz=False \
+    actor_rollout_ref.ref.log_prob_micro_batch_size=$(( train_prompt_bsz * n_resp_per_prompt / 16 )) \
     actor_rollout_ref.ref.log_prob_max_token_len_per_gpu=${infer_ppo_max_token_len} \
     algorithm.adv_estimator=grpo \
     algorithm.use_kl_in_reward=False \

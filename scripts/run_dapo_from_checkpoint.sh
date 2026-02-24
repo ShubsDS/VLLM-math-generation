@@ -53,8 +53,8 @@ overlong_buffer_len=4096
 train_prompt_bsz=32
 n_resp_per_prompt=8
 train_prompt_mini_bsz=16
-actor_ppo_max_token_len=$(( (max_prompt_length + max_response_length) * 4 ))
-infer_ppo_max_token_len=$(( (max_prompt_length + max_response_length) * 6 ))
+actor_ppo_max_token_len=$(( (max_prompt_length + max_response_length) * 2 ))
+infer_ppo_max_token_len=$(( (max_prompt_length + max_response_length) * 4 ))
 
 # ── Validation ─────────────────────────────────────────────────────────────────
 if [ ! -f "${TRAIN_FILE}" ]; then
@@ -91,6 +91,8 @@ echo "=========================================="
 
 # Run from the verl repo root so Hydra resolves its config path correctly.
 cd "${VERL_DIR}"
+
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 python3 -m verl.trainer.main_ppo \
     data.train_files="${TRAIN_FILE}" \

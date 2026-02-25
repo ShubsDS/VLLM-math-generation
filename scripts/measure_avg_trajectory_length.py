@@ -85,7 +85,7 @@ def load_math_dataset(split: str, num_samples: int, seed: int):
     )
 
 
-def compute_token_counts(
+def compute_generations(
     model: str,
     prompts: list[str],
     max_tokens: int = 16384,
@@ -93,8 +93,8 @@ def compute_token_counts(
     top_p: float = 1.0,
     gpu_memory_utilization: float = 0.95,
     tensor_parallel_size: int = 1,
-) -> list[int]:
-    """Run vLLM inference and return per-prompt output token counts.
+) -> tuple[list[int], list[str]]:
+    """Run vLLM inference and return ``(token_counts, generated_texts)``.
 
     The LLM is created, used, and then explicitly destroyed so that callers
     (e.g. ``sweep_trajectory_lengths.py``) can call this in a loop across
@@ -122,12 +122,35 @@ def compute_token_counts(
 
     outputs = llm.generate(prompts, sampling_params)
     counts = [len(out.outputs[0].token_ids) for out in outputs]
+    texts = [out.outputs[0].text for out in outputs]
 
     # Explicit cleanup so GPU memory is released before the next checkpoint.
     del llm
     gc.collect()
     torch.cuda.empty_cache()
 
+    return counts, texts
+
+
+def compute_token_counts(
+    model: str,
+    prompts: list[str],
+    max_tokens: int = 16384,
+    temperature: float = 0.0,
+    top_p: float = 1.0,
+    gpu_memory_utilization: float = 0.95,
+    tensor_parallel_size: int = 1,
+) -> list[int]:
+    """Run vLLM inference and return per-prompt output token counts."""
+    counts, _ = compute_generations(
+        model=model,
+        prompts=prompts,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        gpu_memory_utilization=gpu_memory_utilization,
+        tensor_parallel_size=tensor_parallel_size,
+    )
     return counts
 
 

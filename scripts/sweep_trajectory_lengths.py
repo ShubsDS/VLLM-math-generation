@@ -96,6 +96,33 @@ def plot_distribution(
     print(f"  Saved distribution plot: {out_path}")
 
 
+def plot_accuracy(
+    ckpt_nums: list[int],
+    accuracies: list[float],
+    image_dir: Path,
+) -> None:
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    pcts = [a * 100 for a in accuracies]
+    ax.plot(ckpt_nums, pcts, marker="o", color="seagreen", linewidth=1.8, markersize=6)
+    for x, y in zip(ckpt_nums, pcts):
+        ax.annotate(f"{y:.1f}%", (x, y), textcoords="offset points", xytext=(0, 8),
+                    ha="center", fontsize=8)
+    ax.set_xlabel("Checkpoint")
+    ax.set_ylabel("Accuracy (%)")
+    ax.set_title("Accuracy on MATH test set across checkpoints")
+    ax.set_xticks(ckpt_nums)
+    ax.set_ylim(0, 100)
+    ax.grid(axis="y", linestyle="--", alpha=0.5)
+    fig.tight_layout()
+
+    out_path = image_dir / "accuracy.png"
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    print(f"Saved accuracy plot: {out_path}")
+
+
 def plot_mean_trajectory(
     ckpt_nums: list[int],
     means: list[float],
@@ -125,11 +152,15 @@ def plot_mean_trajectory(
 # Summary table
 # ---------------------------------------------------------------------------
 
-def print_summary(ckpt_nums: list[int], counts_by_ckpt: dict[int, list[int]]) -> None:
-    header = f"{'Ckpt':>6}  {'N':>5}  {'Mean':>8}  {'Std':>8}  {'Min':>6}  {'p50':>6}  {'p95':>6}  {'Max':>6}"
+def print_summary(
+    ckpt_nums: list[int],
+    counts_by_ckpt: dict[int, list[int]],
+    acc_by_ckpt: dict[int, float | None],
+) -> None:
+    header = f"{'Ckpt':>6}  {'N':>5}  {'Acc%':>6}  {'Mean':>8}  {'Std':>8}  {'Min':>6}  {'p50':>6}  {'p95':>6}  {'Max':>6}"
     sep = "=" * len(header)
     print(f"\n{sep}")
-    print("Mean trajectory length per checkpoint")
+    print("Accuracy and mean trajectory length per checkpoint")
     print(sep)
     print(header)
     print("-" * len(header))
@@ -137,8 +168,10 @@ def print_summary(ckpt_nums: list[int], counts_by_ckpt: dict[int, list[int]]) ->
     for ckpt_num in ckpt_nums:
         counts = counts_by_ckpt[ckpt_num]
         n = len(counts)
+        acc = acc_by_ckpt.get(ckpt_num)
+        acc_str = f"{acc * 100:>5.1f}" if acc is not None else "  n/a"
         if n == 0:
-            print(f"{ckpt_num:>6}  {'0':>5}  {'FAILED':>8}")
+            print(f"{ckpt_num:>6}  {'0':>5}  {acc_str}  {'FAILED':>8}")
             continue
         sorted_c = sorted(counts)
         mean = statistics.mean(counts)
@@ -151,7 +184,7 @@ def print_summary(ckpt_nums: list[int], counts_by_ckpt: dict[int, list[int]]) ->
             return sorted_c[lo] + (sorted_c[hi] - sorted_c[lo]) * (idx - lo)
 
         print(
-            f"{ckpt_num:>6}  {n:>5}  {mean:>8.1f}  {std:>8.1f}  "
+            f"{ckpt_num:>6}  {n:>5}  {acc_str}  {mean:>8.1f}  {std:>8.1f}  "
             f"{sorted_c[0]:>6}  {statistics.median(counts):>6.0f}  {pct(95):>6.0f}  {sorted_c[-1]:>6}"
         )
 
@@ -163,14 +196,15 @@ def print_summary(ckpt_nums: list[int], counts_by_ckpt: dict[int, list[int]]) ->
 def main() -> int:
     import torch
 
-    # Import module-level functions from the sibling script.
+    # Import module-level functions from the sibling scripts.
     sys.path.insert(0, str(Path(__file__).parent))
     from measure_avg_trajectory_length import (
-        compute_token_counts,
+        compute_generations,
         format_math_prompt,
         load_math_dataset,
         print_stats,
     )
+    from run_local_pipeline import compare_answers
 
     parser = argparse.ArgumentParser(
         description="Sweep trajectory-length distributions across all checkpoints in a directory.",
@@ -220,15 +254,17 @@ def main() -> int:
     )
     print(f"Loaded {len(dataset)} examples from {source_id}")
     prompts = [format_math_prompt(row["problem"]) for row in dataset]
+    solutions = [row["solution"] for row in dataset]
 
     counts_by_ckpt: dict[int, list[int]] = {}
+    acc_by_ckpt: dict[int, float | None] = {}
 
     for ckpt_num, model_path in checkpoints:
         print(f"\n{'='*60}")
         print(f"Checkpoint {ckpt_num}: {model_path}")
         print(f"{'='*60}")
         try:
-            counts = compute_token_counts(
+            counts, texts = compute_generations(
                 model=str(model_path),
                 prompts=prompts,
                 max_tokens=args.max_tokens,
@@ -239,20 +275,32 @@ def main() -> int:
             )
         except Exception as exc:
             print(f"  ERROR: {exc} — skipping checkpoint {ckpt_num}.")
-            counts = []
+            counts_by_ckpt[ckpt_num] = []
+            acc_by_ckpt[ckpt_num] = None
+            continue
 
         counts_by_ckpt[ckpt_num] = counts
 
-        if counts:
-            print_stats(str(model_path), args.split, args.num_samples, args.max_tokens, counts)
-            plot_distribution(counts, ckpt_num, args.max_tokens, image_dir)
+        correct = sum(
+            1 for text, sol in zip(texts, solutions) if compare_answers(text, sol)[0]
+        )
+        accuracy = correct / len(texts)
+        acc_by_ckpt[ckpt_num] = accuracy
+        print(f"  Accuracy: {correct}/{len(texts)} = {accuracy*100:.1f}%")
 
-    # Mean trajectory plot across all successful checkpoints.
-    valid = [(n, counts_by_ckpt[n]) for n in ckpt_nums if counts_by_ckpt[n]]
+        print_stats(str(model_path), args.split, args.num_samples, args.max_tokens, counts)
+        plot_distribution(counts, ckpt_num, args.max_tokens, image_dir)
+
+    # Summary plots across all successful checkpoints.
+    valid = [(n, counts_by_ckpt[n]) for n in ckpt_nums if counts_by_ckpt.get(n)]
     if valid:
         plot_mean_trajectory([n for n, _ in valid], [statistics.mean(c) for _, c in valid], image_dir)
 
-    print_summary(ckpt_nums, counts_by_ckpt)
+    valid_acc = [(n, acc_by_ckpt[n]) for n in ckpt_nums if acc_by_ckpt.get(n) is not None]
+    if valid_acc:
+        plot_accuracy([n for n, _ in valid_acc], [a for _, a in valid_acc], image_dir)
+
+    print_summary(ckpt_nums, counts_by_ckpt, acc_by_ckpt)
     return 0
 
 

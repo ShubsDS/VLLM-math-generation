@@ -92,7 +92,7 @@ echo "=========================================="
 # Run from the verl repo root so Hydra resolves its config path correctly.
 cd "${VERL_DIR}"
 
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # correct env var name (PYTORCH_ALLOC_CONF is silently ignored)
+export PYTORCH_ALLOC_CONF=expandable_segments:True
 export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=1800  # default 120s; extended to survive slow FSDP checkpoint saves
 
 python3 -m verl.trainer.main_ppo \
@@ -128,6 +128,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.actor.optim.lr_warmup_steps=10 \
     actor_rollout_ref.actor.optim.weight_decay=0.1 \
     actor_rollout_ref.actor.ppo_mini_batch_size=${train_prompt_mini_bsz} \
+    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=4 \
     actor_rollout_ref.actor.use_dynamic_bsz=False \
     actor_rollout_ref.actor.ppo_max_token_len_per_gpu=${actor_ppo_max_token_len} \
     actor_rollout_ref.actor.clip_ratio_low=0.2 \

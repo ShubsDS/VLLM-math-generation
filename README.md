@@ -15,6 +15,7 @@ This repository contains four experiment pipelines:
 3. Trajectory length analysis
    - `scripts/measure_avg_trajectory_length.py`: module + CLI for measuring output-token statistics on a single checkpoint.
    - `scripts/sweep_trajectory_lengths.py`: sweeps every checkpoint in a directory, producing per-checkpoint histograms and a mean-trajectory plot.
+   - `additionally determines validation accuracies for each checkpoint`
 
 4. DAPO training sweep
    - `scripts/prepare_dapo_data.sh`: download DAPO-MATH-17K and AIME-2024 datasets.

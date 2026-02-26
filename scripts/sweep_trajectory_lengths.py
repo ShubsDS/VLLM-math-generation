@@ -31,10 +31,18 @@ python scripts/sweep_trajectory_lengths.py \\
 """
 
 import argparse
+import os
 import re
 import statistics
 import sys
 from pathlib import Path
+
+# vLLM v1 spawns an EngineCore subprocess for each LLM instance.  When the
+# sweep loop creates a second LLM after the first has been deleted, the parent
+# process already has CUDA initialized, so a fork()-based child immediately
+# fails with "Cannot re-initialize CUDA in forked subprocess".  Forcing
+# 'spawn' avoids inherited CUDA state.
+os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
 
 # ---------------------------------------------------------------------------
 # Checkpoint discovery

@@ -46,6 +46,10 @@ for epoch in "$@"; do
         bash "${SCRIPT_DIR}/run_dapo_from_checkpoint.sh"
 
     echo "-- Finished epoch ${epoch} --"
+
+    # Stop Ray to release GPU memory before the next checkpoint run.
+    ray stop --force 2>/dev/null || true
+    sleep 5
 done
 
 echo ""

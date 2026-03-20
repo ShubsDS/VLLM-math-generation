@@ -180,9 +180,11 @@ def main() -> int:
                         help="MATH test problems per checkpoint")
     parser.add_argument("--max-tokens", type=int, default=4096,
                         help="Max output tokens per generation")
-    parser.add_argument("--temperature", type=float, default=0.0,
-                        help="Sampling temperature (0 = greedy)")
-    parser.add_argument("--top-p", type=float, default=1.0)
+    parser.add_argument("--num-gen", type=int, default=8,
+                        help="Generations per problem; pass@1 = mean(correct_k / num_gen)")
+    parser.add_argument("--temperature", type=float, default=0.7,
+                        help="Sampling temperature")
+    parser.add_argument("--top-p", type=float, default=0.8)
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.85,
                         help="vLLM GPU memory fraction")
     parser.add_argument("--tensor-parallel-size", type=int, default=None,
@@ -210,8 +212,13 @@ def main() -> int:
         split="test", num_samples=args.num_samples, seed=args.seed,
     )
     print(f"Loaded {len(dataset)} examples from {source_id}")
+    print(f"Generations per problem: {args.num_gen}  (pass@1 = mean correct/num_gen)")
     prompts   = [format_math_prompt(row["problem"]) for row in dataset]
     solutions = [row["solution"] for row in dataset]
+
+    # Repeat each prompt num_gen times so compute_generations (n=1) gives us
+    # num_gen independent samples per problem.
+    repeated_prompts = [p for p in prompts for _ in range(args.num_gen)]
 
     results: dict[int, dict[int, float]] = {}
 
@@ -248,7 +255,7 @@ def main() -> int:
                 try:
                     _, texts = compute_generations(
                         model=tmp_dir,
-                        prompts=prompts,
+                        prompts=repeated_prompts,
                         max_tokens=args.max_tokens,
                         temperature=args.temperature,
                         top_p=args.top_p,
@@ -260,13 +267,19 @@ def main() -> int:
                     continue
             # tmp_dir is deleted here; GPU memory released by compute_generations.
 
-            correct = sum(
-                1 for text, sol in zip(texts, solutions)
-                if compare_answers(text, sol)[0]
-            )
-            accuracy = correct / len(texts)
+            # Compute per-problem pass@1: group the num_gen texts back by problem,
+            # count correct, divide by num_gen.  Overall accuracy = mean over problems.
+            n = args.num_gen
+            per_problem_pass1 = []
+            for i, sol in enumerate(solutions):
+                problem_texts = texts[i * n : (i + 1) * n]
+                correct_k = sum(1 for t in problem_texts if compare_answers(t, sol)[0])
+                per_problem_pass1.append(correct_k / n)
+            accuracy = sum(per_problem_pass1) / len(per_problem_pass1)
             results[sft_epoch][rl_step] = accuracy
-            print(f"  RL step {rl_step}: {correct}/{len(texts)} = {accuracy*100:.1f}%")
+            total_correct = sum(per_problem_pass1)
+            print(f"  RL step {rl_step}: pass@1 = {accuracy*100:.1f}%  "
+                  f"(mean {total_correct:.1f}/{len(solutions)} problems correct)")
 
             gc.collect()
 

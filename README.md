@@ -167,6 +167,8 @@ continue training from SFT checkpoints, with each checkpoint producing a separat
 W&B run so that training reward curves and AIME-2024 accuracy can be overlaid and
 compared.
 
+**We importantly use a reward signal of +1 for correct and 0 for incorrect, with the old reward signal it seemed somewhat inconsistet**
+
 ### Step 1 — Download data
 
 ```bash
